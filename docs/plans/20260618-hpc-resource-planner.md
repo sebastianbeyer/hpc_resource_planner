@@ -337,19 +337,21 @@ type AppState = {
   resolutions)
 - Create: `e2e/models.spec.ts`
 
-- [ ] list models with add/delete; each row expands to a `ModelEditor`
-- [ ] `ModelCostMatrix.svelte`: for the selected model, render a grid of
+- [x] list models with add/delete; each row expands to a `ModelEditor`
+- [x] `ModelCostMatrix.svelte`: for the selected model, render a grid of
       resolution × HPC cells; each cell opens a small editor for CPU/GPU
       per-month and a per-portfolio storage row
-- [ ] `VocabEditor.svelte`: top-of-page small editor for adding/removing
+- [x] `VocabEditor.svelte`: top-of-page small editor for adding/removing
       resolutions and data portfolios (these are shared vocab lists in
       `appState`)
-- [ ] when a resolution or portfolio is removed, prompt before deleting
-      (since it may be referenced by sims/cost cells)
-- [ ] `e2e/models.spec.ts`: add a model, define a cost cell, reload, assert
+- [x] when a resolution or portfolio is removed, prompt before deleting
+      (since it may be referenced by sims/cost cells); on removal, also
+      strip the value from all `model.costs` (resolution row and/or
+      portfolio key)
+- [x] `e2e/models.spec.ts`: add a model, define a cost cell, reload, assert
       cell value persists
-- [ ] component smoke tests
-- [ ] run unit + e2e tests — must pass before Task 7
+- [x] component smoke tests
+- [x] run unit + e2e tests — must pass before Task 7
 
 ### Task 7: Simulations & Packages tab
 
