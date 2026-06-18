@@ -488,17 +488,24 @@ type AppState = {
       `npm run test:e2e`: 6 e2e tests pass)
 
 ### Task 11: Verify acceptance criteria
-- [ ] verify each of the four tabs implements the behaviour described in the
-      Overview
-- [ ] verify locked simulations cannot be dragged, but their period split
-      can still be edited
-- [ ] verify storage is per-HPC and accumulates across periods (not reset)
-- [ ] verify overhead multiplier affects only compute, not storage
-- [ ] verify import + export round-trips a non-trivial state losslessly
-- [ ] verify over-budget cells render the warning style
-- [ ] run full test suite: `npm run test && npm run test:e2e`
-- [ ] verify a production build with `npm run build && npm run preview`
-- [ ] check the built `build/` output is fully static (no server entrypoint)
+- [x] verify each of the four tabs implements the behaviour described in the
+      Overview (all four `+page.svelte` files exist under `src/routes/{hpcs,models,simulations,plan}/`; manually exercised via the e2e suite which covers add/edit/persist on each tab)
+- [x] verify locked simulations cannot be dragged, but their period split
+      can still be edited (`SimulationCard.svelte` gates "Unassign" / "Move to ▾" behind `!sim.locked`; "Edit split" is always available; `PeriodSplitEditor.svelte` has no lock gating)
+- [x] verify storage is per-HPC and accumulates across periods (not reset)
+      (`src/lib/calc/rollup.ts` adds `cost.storageTb` straight into `hpcBucket.storageUsedTb` with no period dimension; `HpcLane.svelte` renders one `BudgetMeter` for cumulative storage per HPC, outside the per-period loop)
+- [x] verify overhead multiplier affects only compute, not storage
+      (`src/lib/calc/cost.ts` multiplies `cpuHours`/`gpuHours` by `sim.overheadMultiplier`; `storageTb = storagePerMonth * totalMonths` with no overhead factor)
+- [x] verify import + export round-trips a non-trivial state losslessly
+      (`src/lib/io/json.test.ts` "round-trips a non-trivial state with HPC, model, sim, and assignment" passes)
+- [x] verify over-budget cells render the warning style
+      (`BudgetMeter.svelte` switches to `bg-red-600` bar + `text-red-700 font-semibold` numeric + "OVER BUDGET" tag when `used > budget`; e2e `plan.spec.ts` asserts the over-budget styling appears)
+- [x] run full test suite: `npm run test && npm run test:e2e`
+      (170/170 vitest, 6/6 playwright pass)
+- [x] verify a production build with `npm run build && npm run preview`
+      (build completes with no errors; preview serves `/`, `/plan`, `/favicon.png` with HTTP 200. Added a 1×1 transparent `static/favicon.png` to fix the prerender 404 flagged in Task 10.)
+- [x] check the built `build/` output is fully static (no server entrypoint)
+      (`build/` contains `index.html`, per-route HTML (`hpcs.html`, `models.html`, `simulations.html`, `plan.html`), `_app/immutable/` for client chunks, `favicon.png` — no `server/` directory, no `index.js` server entry)
 
 ### Task 12: [Final] Documentation & plan archival
 - [ ] expand `README.md`: quickstart, JSON schema reference, hosting note
