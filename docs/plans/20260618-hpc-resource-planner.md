@@ -250,18 +250,21 @@ type AppState = {
 - Create: `src/lib/stores/persistence.ts` (localStorage adapter)
 - Create: `src/lib/stores/persistence.test.ts`
 
-- [ ] create `appState` writable store initialised from `defaultState()`
-- [ ] in `persistence.ts`, expose `loadFromLocalStorage()` and
+- [x] create `appState` writable store initialised from `defaultState()`
+- [x] in `persistence.ts`, expose `loadFromLocalStorage()` and
       `attachAutosave(store)` (debounce 250ms)
-- [ ] guard with `typeof window !== 'undefined'` so SSR/prerender doesn't
+- [x] guard with `typeof window !== 'undefined'` so SSR/prerender doesn't
       blow up
-- [ ] add derived helpers: `hpcsStore`, `modelsStore`, `simulationsStore`,
-      `assignmentsStore` (each just `derived(appState, s => s.x)`)
-- [ ] in `+layout.svelte` `onMount`, call `loadFromLocalStorage()` then
+- [x] add derived helpers: `hpcsStore`, `modelsStore`, `simulationsStore`,
+      `assignmentsStore` (each just `derived(appState, s => s.x)`) — also
+      added `dataPortfoliosStore` and `resolutionsStore` for symmetry
+- [x] in `+layout.svelte` `onMount`, call `loadFromLocalStorage()` then
       `attachAutosave(appState)`
-- [ ] write tests using a mocked `localStorage` (jsdom): round-trip a state,
-      verify debounced write, verify load+migrate path
-- [ ] run tests — must pass before Task 4
+- [x] write tests using a mocked `localStorage` (jsdom): round-trip a state,
+      verify debounced write, verify load+migrate path (also required a
+      `src/test-setup.ts` to bridge jsdom's `localStorage` past Node 26's
+      stub global — see file header for the gory details)
+- [x] run tests — must pass before Task 4
 
 ### Task 4: Calculation layer (the heart of the app)
 
