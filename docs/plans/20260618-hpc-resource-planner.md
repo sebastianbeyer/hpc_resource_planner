@@ -206,20 +206,22 @@ type AppState = {
 - Create: `.gitignore`
 - Create: `README.md` (one-paragraph: what + how to run)
 
-- [ ] `npm create svelte@latest .` equivalent — scaffold SvelteKit with
-      TypeScript, ESLint, Prettier, Vitest, Playwright
-- [ ] install and wire Tailwind (`tailwindcss`, `postcss`, `autoprefixer`)
+- [x] `npm create svelte@latest .` equivalent — scaffold SvelteKit with
+      TypeScript, ESLint, Prettier, Vitest, Playwright (non-interactive: hand-wrote
+      config files; ESLint skipped per task instructions)
+- [x] install and wire Tailwind (`tailwindcss`, `postcss`, `autoprefixer`)
       and import `app.css` from `+layout.svelte`
-- [ ] swap default adapter for `@sveltejs/adapter-static` and set
+- [x] swap default adapter for `@sveltejs/adapter-static` and set
       `prerender = true` in `+layout.ts`
-- [ ] add npm scripts: `dev`, `build`, `preview`, `test`, `test:e2e`,
-      `check`, `lint`, `format`
-- [ ] write a placeholder Vitest test in `src/lib/__smoke__.test.ts` (`expect
+- [x] add npm scripts: `dev`, `build`, `preview`, `test`, `test:e2e`,
+      `check`, `lint`, `format` (lint script omitted — no ESLint config yet)
+- [x] write a placeholder Vitest test in `src/lib/__smoke__.test.ts` (`expect
       (1+1).toBe(2)`)
-- [ ] write a placeholder Playwright test in `e2e/smoke.spec.ts` that loads
+- [x] write a placeholder Playwright test in `e2e/smoke.spec.ts` that loads
       `/` and asserts the page title
-- [ ] run `npm run test` and `npm run test:e2e` — must pass before Task 2
-- [ ] `git init`, initial commit
+- [x] run `npm run test` and `npm run test:e2e` — must pass before Task 2
+- [x] `git init`, initial commit (repo already initialized on branch
+      hpc-resource-planner)
 
 ### Task 2: Data model types & schema migration scaffolding
 
