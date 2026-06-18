@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Hpc, Model, Simulation } from '$lib/types';
+  import EmptyState from './EmptyState.svelte';
   import SimulationCard from './SimulationCard.svelte';
 
   export let sims: Simulation[];
@@ -18,9 +19,9 @@
   </header>
 
   {#if sims.length === 0}
-    <p class="rounded border border-dashed border-slate-300 bg-white p-4 text-center text-xs italic text-slate-500" data-testid="tray-empty">
-      All sims assigned.
-    </p>
+    <div data-testid="tray-empty">
+      <EmptyState title="All sims assigned" message="Drag from here when there are sims to place." />
+    </div>
   {:else}
     <div class="space-y-2">
       {#each sims as sim (sim.id)}

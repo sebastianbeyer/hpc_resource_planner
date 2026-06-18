@@ -9,11 +9,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('export, wipe, re-import restores the same state', async ({ page }) => {
-  // Auto-accept any window.alert() that the import flow shows on success.
-  page.on('dialog', (d) => {
-    void d.accept();
-  });
-
   // ---- step 1: build a small, recognisable state on the HPCs tab ----
   await page.goto('/hpcs');
   await page.waitForFunction(() => {
@@ -70,6 +65,9 @@ test('export, wipe, re-import restores the same state', async ({ page }) => {
 
   // The modal closes itself after a successful import.
   await expect(page.getByTestId('import-export-modal')).not.toBeVisible();
+
+  // A success toast should appear with the imported counts.
+  await expect(page.getByTestId('toast').filter({ hasText: 'State imported' })).toBeVisible();
 
   // Give autosave (250ms debounce) a chance to flush before navigation,
   // otherwise the reload below would re-hydrate the stale (empty) state.

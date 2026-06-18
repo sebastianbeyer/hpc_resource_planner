@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import ImportExportModal from './ImportExportModal.svelte';
 
@@ -18,6 +19,16 @@
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  // Match the active tab href for the mobile <select>; falls back to /hpcs.
+  $: currentTabHref = tabs.find((t) => isActive(t.href))?.href ?? '/hpcs';
+
+  function handleMobileChange(event: Event) {
+    const target = event.currentTarget as HTMLSelectElement;
+    if (target.value && target.value !== pathname) {
+      void goto(target.value);
+    }
+  }
+
   let showIO = false;
 
   function openIO() {
@@ -33,7 +44,8 @@
   class="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2"
   data-testid="tab-bar"
 >
-  <ul class="flex items-center gap-1">
+  <!-- Desktop: full tab list -->
+  <ul class="hidden items-center gap-1 sm:flex" data-testid="tab-bar-desktop">
     {#each tabs as tab}
       <li>
         <a
@@ -50,6 +62,22 @@
       </li>
     {/each}
   </ul>
+
+  <!-- Mobile: collapsed <select> -->
+  <label class="block sm:hidden" data-testid="tab-bar-mobile">
+    <span class="sr-only">Navigate</span>
+    <select
+      class="rounded border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-800"
+      value={currentTabHref}
+      on:change={handleMobileChange}
+      data-testid="tab-bar-mobile-select"
+    >
+      {#each tabs as tab}
+        <option value={tab.href}>{tab.label}</option>
+      {/each}
+    </select>
+  </label>
+
   <button
     type="button"
     data-testid="import-export-button"

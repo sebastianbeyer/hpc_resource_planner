@@ -1,6 +1,9 @@
 <script lang="ts">
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import HpcEditor from '$lib/components/HpcEditor.svelte';
+  import { cascadeDeleteHpc, describeHpcDelete } from '$lib/cascade';
   import { appState, hpcsStore } from '$lib/stores/state';
+  import { pushToast } from '$lib/stores/toast';
   import type { Hpc } from '$lib/types';
   import { newId } from '$lib/util/id';
 
@@ -22,7 +25,44 @@
   }
 
   function deleteHpc(id: string) {
-    appState.update((s) => ({ ...s, hpcs: s.hpcs.filter((h) => h.id !== id) }));
+    // Look up the HPC and impact in a single update-as-read pass.
+    let hpcName = 'untitled';
+    let impact = { assignmentCount: 0, lockedSimCount: 0, costColumnCount: 0 };
+    appState.update((s) => {
+      const found = s.hpcs.find((h) => h.id === id);
+      if (found) hpcName = found.name || 'untitled';
+      impact = describeHpcDelete(s, id);
+      return s;
+    });
+
+    const refParts: string[] = [];
+    if (impact.assignmentCount > 0) {
+      refParts.push(
+        `${impact.assignmentCount} assignment${impact.assignmentCount === 1 ? '' : 's'}`
+      );
+    }
+    if (impact.lockedSimCount > 0) {
+      refParts.push(
+        `${impact.lockedSimCount} locked simulation${impact.lockedSimCount === 1 ? '' : 's'}`
+      );
+    }
+    if (impact.costColumnCount > 0) {
+      refParts.push(
+        `${impact.costColumnCount} cost-matrix entr${impact.costColumnCount === 1 ? 'y' : 'ies'}`
+      );
+    }
+
+    const prompt =
+      refParts.length === 0
+        ? `Delete HPC "${hpcName}"?`
+        : `"${hpcName}" has ${refParts.join(', ')} referencing it. They will be unassigned/unpinned and the cost entries removed. Delete anyway?`;
+
+    if (!window.confirm(prompt)) return;
+    appState.update((s) => cascadeDeleteHpc(s, id));
+    pushToast({
+      kind: 'success',
+      message: `Deleted HPC "${hpcName}".`
+    });
   }
 </script>
 
@@ -46,9 +86,12 @@
   </header>
 
   {#if $hpcsStore.length === 0}
-    <p class="rounded border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-      No HPCs yet. Add one to get started.
-    </p>
+    <EmptyState
+      title="No HPCs yet"
+      message="Add an HPC to start defining storage budgets and per-period compute allocations."
+      actionLabel="+ Add HPC"
+      onAction={addHpc}
+    />
   {:else}
     <div class="space-y-4">
       {#each $hpcsStore as hpc (hpc.id)}

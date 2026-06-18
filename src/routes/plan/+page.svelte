@@ -5,13 +5,15 @@
   // Svelte 5 story for it yet, so per the task's explicit fallback we use a
   // click-driven "Assign to ▾" / "Move to ▾" menu instead. Functionality —
   // assigning, unassigning, moving, period split editing — is preserved.
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import HpcLane from '$lib/components/HpcLane.svelte';
   import UnassignedTray from '$lib/components/UnassignedTray.svelte';
   import {
     appState,
     assignmentsStore,
     hpcsStore,
-    modelsStore
+    modelsStore,
+    simulationsStore
   } from '$lib/stores/state';
   import {
     assignedByHpc,
@@ -61,12 +63,19 @@
   </header>
 
   {#if $hpcsStore.length === 0}
-    <p
-      class="rounded border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"
-      data-testid="plan-empty"
-    >
-      No HPCs yet — define one in the HPC Resources tab to start planning.
-    </p>
+    <div data-testid="plan-empty">
+      <EmptyState
+        title="No HPCs yet"
+        message="Define at least one HPC in the HPC Resources tab to start planning."
+      />
+    </div>
+  {:else if $simulationsStore.length === 0}
+    <div data-testid="plan-empty-sims">
+      <EmptyState
+        title="No simulations yet"
+        message="Add simulations in the Simulations tab to assign them to HPCs and see budgets fill up."
+      />
+    </div>
   {:else}
     <div class="flex gap-4 overflow-x-auto pb-4" data-testid="plan-board">
       <UnassignedTray

@@ -461,19 +461,31 @@ type AppState = {
 - Create: `src/lib/components/Toast.svelte`
 - Create: `src/lib/stores/toast.ts`
 
-- [ ] empty-state components on every tab ("No HPCs yet — add one to get
+- [x] empty-state components on every tab ("No HPCs yet — add one to get
       started", etc.) so the app isn't a wall of blank tables on first run
-- [ ] toast store + component for non-blocking notifications (import
-      success, validation errors, autosave indicator)
-- [ ] cross-cutting checks: deleting an HPC referenced by an assignment
+      (shared `EmptyState.svelte`; wired into hpcs, models, simulations,
+      plan, and `UnassignedTray`)
+- [x] toast store + component for non-blocking notifications (import
+      success, validation errors, autosave indicator) — `stores/toast.ts`
+      + `Toast.svelte` mounted in root `+layout.svelte`; ImportExportModal
+      uses it for both success and failure paths
+- [x] cross-cutting checks: deleting an HPC referenced by an assignment
       prompts confirm and cascades; same for deleting a model with
-      simulations; same for vocabulary items
-- [ ] keyboard-accessible drag fallback on the Plan tab (svelte-dnd-action
-      supports this) — add a tiny "move to…" menu on each card
-- [ ] add basic responsive breakpoints (tabs collapse to a dropdown under
-      640px)
-- [ ] write tests for cascade-delete logic and toast store
-- [ ] run full test suite — must pass before Task 11
+      simulations; same for vocabulary items (vocab cascade was already in
+      place from Task 6 — still works after the EmptyState/toast wiring)
+- [x] keyboard-accessible drag fallback on the Plan tab — Task 8's
+      click-menu already provides this; verified accessibility by adding
+      `aria-haspopup`, `aria-expanded`, `aria-label` to the toggle buttons
+      and `role="menu"` / `role="menuitem"` on the dropdowns
+- [x] add basic responsive breakpoints (tabs collapse to a dropdown under
+      640px) — `hidden sm:flex` desktop nav + `block sm:hidden` `<select>`
+      that calls `goto()` on change
+- [x] write tests for cascade-delete logic and toast store
+      (`cascade.test.ts`, `toast.test.ts`, plus smoke tests for
+      `EmptyState.test.ts` and `Toast.test.ts`)
+- [x] run full test suite — must pass before Task 11
+      (`npm run check`: 0 errors; `npm run test`: 170 tests pass;
+      `npm run test:e2e`: 6 e2e tests pass)
 
 ### Task 11: Verify acceptance criteria
 - [ ] verify each of the four tabs implements the behaviour described in the
