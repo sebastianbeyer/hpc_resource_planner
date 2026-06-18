@@ -391,30 +391,38 @@ type AppState = {
 - Create: `e2e/plan.spec.ts`
 - Modify: `package.json` (add `svelte-dnd-action`)
 
-- [ ] derived store `assignedByHpc` and `unassigned` driven from
+- [x] derived store `assignedByHpc` and `unassigned` driven from
       `assignments` and `simulations`
-- [ ] derived store `rollupStore` calling `rollup(state)` from Task 4
-- [ ] `UnassignedTray.svelte`: lists sims with no assignment as draggable
-      cards
-- [ ] `HpcLane.svelte`: shows HPC name, `BudgetMeter` per period for CPU/GPU
+- [x] derived store `rollupStore` calling `rollup(state)` from Task 4
+- [x] `UnassignedTray.svelte`: lists sims with no assignment as draggable
+      cards (implemented as click-driven "Assign to ▾" menu — see dnd note
+      below)
+- [x] `HpcLane.svelte`: shows HPC name, `BudgetMeter` per period for CPU/GPU
       and one for cumulative storage, and the list of assigned
       `SimulationCard`s
-- [ ] drag-drop with `svelte-dnd-action`: dropping a card on an HPC lane
+- [x] drag-drop with `svelte-dnd-action`: dropping a card on an HPC lane
       creates/updates the corresponding `Assignment` with a default
-      single-period split (= 1.0 on the HPC's first period)
-- [ ] locked sims appear pre-assigned, rendered with a lock icon, and are
-      `dragDisabled` (svelte-dnd-action supports per-item disable)
-- [ ] clicking a card opens `PeriodSplitEditor` (per-period fractions with
+      single-period split (= 1.0 on the HPC's first period) — ⚠️ deviation:
+      `svelte-dnd-action` lacks documented Svelte 5 support, so per the
+      task's stated fallback we use click-driven "Assign to ▾" / "Move to ▾"
+      menus instead. Assignment behaviour (default = 1.0 on first period)
+      is identical.
+- [x] locked sims appear pre-assigned, rendered with a lock icon, and are
+      `dragDisabled` (svelte-dnd-action supports per-item disable) — locked
+      sims render with a lock icon and have neither "Assign to" nor
+      "Unassign"/"Move to" controls, matching the disable semantics.
+- [x] clicking a card opens `PeriodSplitEditor` (per-period fractions with
       "auto-spread N" helper and live valid/invalid indicator from
       `normaliseSplit`)
-- [ ] `BudgetMeter.svelte`: small bar + numeric (used / budget); applies
+- [x] `BudgetMeter.svelte`: small bar + numeric (used / budget); applies
       `bg-red-*` Tailwind classes when `overBudget`
-- [ ] "Unassign" button on each card removes its assignment
-- [ ] `e2e/plan.spec.ts`: define HPC+period+model+cost+sim, drag sim onto
+- [x] "Unassign" button on each card removes its assignment
+- [x] `e2e/plan.spec.ts`: define HPC+period+model+cost+sim, drag sim onto
       HPC lane, assert budget meter updates; force over-budget by editing
-      sim length, assert red warning appears
-- [ ] component smoke tests
-- [ ] run unit + e2e tests — must pass before Task 9
+      sim length, assert red warning appears (drag step replaced with the
+      click-menu assignment per the dnd deviation above)
+- [x] component smoke tests
+- [x] run unit + e2e tests — must pass before Task 9
 
 ### Task 9: JSON import / export
 
