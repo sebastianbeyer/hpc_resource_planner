@@ -508,12 +508,12 @@ type AppState = {
       (`build/` contains `index.html`, per-route HTML (`hpcs.html`, `models.html`, `simulations.html`, `plan.html`), `_app/immutable/` for client chunks, `favicon.png` — no `server/` directory, no `index.js` server entry)
 
 ### Task 12: [Final] Documentation & plan archival
-- [ ] expand `README.md`: quickstart, JSON schema reference, hosting note
+- [x] expand `README.md`: quickstart, JSON schema reference, hosting note
       ("any static host works: GitHub Pages, Netlify, S3+CloudFront")
-- [ ] add `CLAUDE.md` capturing: project type (SvelteKit static SPA), where
+- [x] add `CLAUDE.md` capturing: project type (SvelteKit static SPA), where
       the calc layer lives (`src/lib/calc/`), state model (`src/lib/types
       .ts`), where to add new tabs
-- [ ] move this plan to `docs/plans/completed/`
+- [x] move this plan to `docs/plans/completed/`
 
 ## Post-Completion
 
