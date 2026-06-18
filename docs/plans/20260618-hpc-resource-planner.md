@@ -276,26 +276,27 @@ type AppState = {
 - Create: `src/lib/calc/rollup.ts`
 - Create: `src/lib/calc/rollup.test.ts`
 
-- [ ] `cost.ts`: implement `simulationCost(sim, model, hpcId)` →
+- [x] `cost.ts`: implement `simulationCost(sim, model, hpcId)` →
       `{ cpuHours, gpuHours, storageTb }`; honour `overheadMultiplier`
       (compute only) and `zeroCompute`
-- [ ] `cost.ts`: implement `packageCost(sims, models, hpcId)` for visual
+- [x] `cost.ts`: implement `packageCost(sims, models, hpcId)` for visual
       group totals
-- [ ] `allocate.ts`: implement `allocateAcrossPeriods(totalCompute,
+- [x] `allocate.ts`: implement `allocateAcrossPeriods(totalCompute,
       periodSplit)` → `Record<periodId, {cpuHours, gpuHours}>`
-- [ ] `allocate.ts`: implement `normaliseSplit(periodSplit)` (clamp to [0,1],
+- [x] `allocate.ts`: implement `normaliseSplit(periodSplit)` (clamp to [0,1],
       renormalise to sum 1, return a `valid: boolean` flag for UI warning)
-- [ ] `allocate.ts`: implement `autoSpread(periodIds, n)` →
+- [x] `allocate.ts`: implement `autoSpread(periodIds, n)` →
       `{ [periodId]: 1/n }` helper for the "spread across N" button
-- [ ] `rollup.ts`: implement `rollup(state)` returning
+- [x] `rollup.ts`: implement `rollup(state)` returning
       `Record<hpcId, { storageUsedTb, storageBudgetTb, periods:
       Record<periodId, { cpuUsed, cpuBudget, gpuUsed, gpuBudget }> }>`
-- [ ] `rollup.ts`: derive an `overBudget` boolean per metric for easy UI use
-- [ ] write tests covering: basic single-period sim; multi-period split;
+- [x] `rollup.ts`: derive an `overBudget` boolean per metric for easy UI use
+      (per-axis `*OverBudget` flags + helper `isOverBudget(rollup)`)
+- [x] write tests covering: basic single-period sim; multi-period split;
       overhead applied to compute but not storage; zeroCompute historical
       sim; locked sim included; missing model cost → 0 + flagged in
       result; periodSplit summing to 0.9 → warning + scaled accordingly
-- [ ] run tests — must pass before Task 5
+- [x] run tests — must pass before Task 5
 
 ### Task 5: Tab shell + HPC Resources tab
 
