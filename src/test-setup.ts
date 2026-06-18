@@ -12,6 +12,8 @@
  * jsdom did install them) and pin them on the global with our own
  * descriptors, overriding Node's stubs. Done once at setup time.
  */
+import '@testing-library/jest-dom/vitest';
+
 const jsdomWindow = (globalThis as unknown as { jsdom?: { window: Window } })
   .jsdom?.window;
 

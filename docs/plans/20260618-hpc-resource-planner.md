@@ -309,19 +309,23 @@ type AppState = {
 - Create: `src/lib/util/id.ts` (tiny `newId()` helper)
 - Create: `e2e/hpcs.spec.ts`
 
-- [ ] `TabBar.svelte`: nav with links to `/hpcs`, `/models`, `/simulations`,
-      `/plan`, plus an "Import/Export" button (opens a modal in Task 8)
-- [ ] root `+layout.svelte`: render TabBar above `<slot />`, wire
+- [x] `TabBar.svelte`: nav with links to `/hpcs`, `/models`, `/simulations`,
+      `/plan`, plus an "Import/Export" button (opens a modal in Task 8) —
+      no-op button with `data-testid="import-export-button"` for now
+- [x] root `+layout.svelte`: render TabBar above `<slot />`, wire
       `onMount` persistence hookup (moved from Task 3 if not already)
-- [ ] `/hpcs/+page.svelte`: list HPCs, "Add HPC" button, per-HPC edit form
+- [x] `/hpcs/+page.svelte`: list HPCs, "Add HPC" button, per-HPC edit form
       (name, storage budget) with embedded period list (label, CPU h
       budget, GPU h budget); inline delete buttons with confirm
-- [ ] all edits mutate `appState` via `appState.update(...)` (autosave
+- [x] all edits mutate `appState` via `appState.update(...)` (autosave
       handles persistence)
-- [ ] `e2e/hpcs.spec.ts`: add HPC + period, reload page, assert it's still
-      there
-- [ ] component smoke tests for `HpcEditor` and `PeriodEditor`
-- [ ] run unit + e2e tests — must pass before Task 6
+- [x] `e2e/hpcs.spec.ts`: add HPC + period, reload page, assert it's still
+      there (had to wait for client hydration before clicking — first
+      paint is the SSR snapshot, so an early click is swallowed)
+- [x] component smoke tests for `HpcEditor` and `PeriodEditor` (via
+      `@testing-library/svelte` — also pulled in `vite-plugin-svelte@4` to
+      get proper Svelte 5 support and the `svelteTesting()` Vite plugin)
+- [x] run unit + e2e tests — must pass before Task 6
 
 ### Task 6: Model Config tab
 
