@@ -103,6 +103,9 @@
               class="rounded border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
               on:click={() => (showAssignMenu = !showAssignMenu)}
               data-testid="move-to"
+              aria-haspopup="menu"
+              aria-expanded={showAssignMenu}
+              aria-label={`Move ${sim.name || 'simulation'} to another HPC`}
             >
               Move to ▾
             </button>
@@ -110,12 +113,14 @@
               <ul
                 class="absolute right-0 z-10 mt-1 w-44 rounded border border-slate-300 bg-white p-1 shadow-lg"
                 data-testid="move-menu"
+                role="menu"
               >
                 {#each hpcs as h (h.id)}
                   {#if h.id !== hpcId}
-                    <li>
+                    <li role="none">
                       <button
                         type="button"
+                        role="menuitem"
                         class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
                         on:click={() => {
                           showAssignMenu = false;
@@ -142,6 +147,9 @@
           on:click={() => (showAssignMenu = !showAssignMenu)}
           data-testid="assign-to"
           disabled={hpcs.length === 0}
+          aria-haspopup="menu"
+          aria-expanded={showAssignMenu}
+          aria-label={`Assign ${sim.name || 'simulation'} to an HPC`}
         >
           Assign to ▾
         </button>
@@ -149,11 +157,13 @@
           <ul
             class="absolute right-0 z-10 mt-1 w-44 rounded border border-slate-300 bg-white p-1 shadow-lg"
             data-testid="assign-menu"
+            role="menu"
           >
             {#each hpcs as h (h.id)}
-              <li>
+              <li role="none">
                 <button
                   type="button"
+                  role="menuitem"
                   class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
                   on:click={() => {
                     showAssignMenu = false;

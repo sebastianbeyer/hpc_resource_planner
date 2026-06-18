@@ -1,4 +1,5 @@
 <script lang="ts">
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import SimulationEditor from '$lib/components/SimulationEditor.svelte';
   import SimulationTotals from '$lib/components/SimulationTotals.svelte';
   import { packageCost } from '$lib/calc/cost';
@@ -98,12 +99,14 @@
   </header>
 
   {#if $simulationsStore.length === 0}
-    <p
-      class="rounded border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"
-      data-testid="sims-empty"
-    >
-      No simulations yet. Add one to get started.
-    </p>
+    <div data-testid="sims-empty">
+      <EmptyState
+        title="No simulations yet"
+        message="Add a simulation to compute totals from your model cost matrix."
+        actionLabel="+ Add Simulation"
+        onAction={addSimulation}
+      />
+    </div>
   {:else}
     {#each groups as group (group.key)}
       <section

@@ -1,6 +1,8 @@
 <script lang="ts">
+  import EmptyState from '$lib/components/EmptyState.svelte';
   import ModelEditor from '$lib/components/ModelEditor.svelte';
   import VocabEditor from '$lib/components/VocabEditor.svelte';
+  import { cascadeDeleteModel, describeModelDelete } from '$lib/cascade';
   import {
     appState,
     dataPortfoliosStore,
@@ -8,6 +10,7 @@
     modelsStore,
     resolutionsStore
   } from '$lib/stores/state';
+  import { pushToast } from '$lib/stores/toast';
   import type { AppState, Model } from '$lib/types';
   import { newId } from '$lib/util/id';
 
@@ -28,7 +31,33 @@
   }
 
   function deleteModel(id: string) {
-    appState.update((s) => ({ ...s, models: s.models.filter((m) => m.id !== id) }));
+    let modelName = 'untitled';
+    let impact = { simulationCount: 0, simulationNames: [] as string[] };
+    appState.update((s) => {
+      const found = s.models.find((m) => m.id === id);
+      if (found) modelName = found.name || 'untitled';
+      impact = describeModelDelete(s, id);
+      return s;
+    });
+
+    let prompt: string;
+    if (impact.simulationCount === 0) {
+      prompt = `Delete model "${modelName}"?`;
+    } else {
+      const namesPreview = impact.simulationNames.slice(0, 5).join(', ');
+      const more =
+        impact.simulationCount > 5
+          ? ` (+${impact.simulationCount - 5} more)`
+          : '';
+      prompt = `"${modelName}" is referenced by ${impact.simulationCount} simulation${impact.simulationCount === 1 ? '' : 's'} (${namesPreview}${more}). Their model link will be cleared. Delete anyway?`;
+    }
+
+    if (!window.confirm(prompt)) return;
+    appState.update((s) => cascadeDeleteModel(s, id));
+    pushToast({
+      kind: 'success',
+      message: `Deleted model "${modelName}".`
+    });
   }
 
   function resolutionReferenced(s: AppState, resolution: string): boolean {
@@ -145,11 +174,12 @@
   </div>
 
   {#if $modelsStore.length === 0}
-    <p
-      class="rounded border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500"
-    >
-      No models yet. Add one to define costs.
-    </p>
+    <EmptyState
+      title="No models yet"
+      message="Add a model to define its CPU, GPU, and storage cost matrix per HPC and resolution."
+      actionLabel="+ Add Model"
+      onAction={addModel}
+    />
   {:else}
     <div class="space-y-4">
       {#each $modelsStore as model (model.id)}

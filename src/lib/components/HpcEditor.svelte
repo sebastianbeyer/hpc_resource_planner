@@ -33,7 +33,8 @@
   }
 
   function deleteHpc() {
-    if (!window.confirm(`Delete HPC "${hpc.name || 'untitled'}"?`)) return;
+    // Confirm + cascade handling lives in the page (see /hpcs/+page.svelte)
+    // so it can describe references like assignments and locked sims.
     onDelete();
   }
 </script>

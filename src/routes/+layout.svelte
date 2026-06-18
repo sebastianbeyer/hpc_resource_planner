@@ -4,6 +4,7 @@
   import { appState } from '$lib/stores/state';
   import { attachAutosave, loadFromLocalStorage } from '$lib/stores/persistence';
   import TabBar from '$lib/components/TabBar.svelte';
+  import Toast from '$lib/components/Toast.svelte';
 
   onMount(() => {
     const loaded = loadFromLocalStorage();
@@ -18,4 +19,5 @@
   <main class="mx-auto max-w-6xl px-4 py-6">
     <slot />
   </main>
+  <Toast />
 </div>

@@ -14,7 +14,7 @@
   }
 
   function deleteModel() {
-    if (!window.confirm(`Delete model "${model.name || 'untitled'}"?`)) return;
+    // Confirm + cascade handling lives in the page (see /models/+page.svelte).
     onDelete();
   }
 </script>

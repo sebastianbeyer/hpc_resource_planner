@@ -2,6 +2,7 @@
   import { appState } from '$lib/stores/state';
   import { downloadStateAsFile, importState } from '$lib/io/json';
   import { CURRENT_SCHEMA_VERSION } from '$lib/schema';
+  import { pushToast } from '$lib/stores/toast';
 
   export let open: boolean;
   export let onClose: () => void;
@@ -70,14 +71,21 @@
       const migrated = importState(text);
       appState.set(migrated);
 
-      let msg = 'State imported successfully.';
+      const summary =
+        `${migrated.hpcs.length} HPC${migrated.hpcs.length === 1 ? '' : 's'}, ` +
+        `${migrated.models.length} model${migrated.models.length === 1 ? '' : 's'}, ` +
+        `${migrated.simulations.length} sim${migrated.simulations.length === 1 ? '' : 's'}`;
+      let msg = `State imported (${summary}).`;
       if (priorVersion !== undefined && priorVersion !== migrated.schemaVersion) {
         msg += ` Upgraded from v${priorVersion}.`;
       }
-      if (typeof window !== 'undefined') window.alert(msg);
+      pushToast({ kind: 'success', message: msg, ttlMs: 5000 });
       onClose();
     } catch (err) {
       errorMessage = err instanceof Error ? err.message : String(err);
+      // Also surface a transient toast so dismissing the modal still leaves
+      // feedback visible (the inline error stays put while the modal is open).
+      pushToast({ kind: 'error', message: `Import failed: ${errorMessage}`, ttlMs: 6000 });
     }
   }
 
