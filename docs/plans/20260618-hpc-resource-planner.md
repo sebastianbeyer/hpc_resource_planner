@@ -230,18 +230,18 @@ type AppState = {
 - Create: `src/lib/schema.ts` (runtime validator + `migrate(state)`)
 - Create: `src/lib/schema.test.ts`
 
-- [ ] define all types from Technical Details in `types.ts`
-- [ ] add `defaultState(): AppState` returning an empty-but-valid state with
+- [x] define all types from Technical Details in `types.ts`
+- [x] add `defaultState(): AppState` returning an empty-but-valid state with
       `schemaVersion: 1` and seeded default `dataPortfolios` and `resolutions`
       (e.g. `["minimal", "standard", "extended"]`, `["tco79", "tco399",
       "tco1279", "tco2559"]`) — these are starter defaults, user-editable
-- [ ] add `validateState(unknown): AppState` that throws on shape mismatch
+- [x] add `validateState(unknown): AppState` that throws on shape mismatch
       (hand-rolled checks; avoid a runtime-validation lib for v1)
-- [ ] add `migrate(state: unknown): AppState` — for v1 it just validates;
+- [x] add `migrate(state: unknown): AppState` — for v1 it just validates;
       future-proofed for v2+
-- [ ] write tests: defaultState passes validation; mangled inputs throw;
+- [x] write tests: defaultState passes validation; mangled inputs throw;
       migrate of current-version round-trips
-- [ ] run tests — must pass before Task 3
+- [x] run tests — must pass before Task 3
 
 ### Task 3: Persisted Svelte stores
 
