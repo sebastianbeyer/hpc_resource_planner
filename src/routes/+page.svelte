@@ -1,2 +1,10 @@
-<h1 class="text-2xl font-bold p-4">HPC Resource Planner</h1>
-<p class="px-4">Placeholder home page. Tabs will be added in Task 5.</p>
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+
+  onMount(() => {
+    goto('/hpcs', { replaceState: true });
+  });
+</script>
+
+<p class="text-sm text-slate-600">Loading…</p>

@@ -3,6 +3,7 @@
   import '../app.css';
   import { appState } from '$lib/stores/state';
   import { attachAutosave, loadFromLocalStorage } from '$lib/stores/persistence';
+  import TabBar from '$lib/components/TabBar.svelte';
 
   onMount(() => {
     const loaded = loadFromLocalStorage();
@@ -12,4 +13,9 @@
   });
 </script>
 
-<slot />
+<div class="min-h-screen bg-slate-50 text-slate-900">
+  <TabBar />
+  <main class="mx-auto max-w-6xl px-4 py-6">
+    <slot />
+  </main>
+</div>
