@@ -432,23 +432,26 @@ type AppState = {
 - Create: `src/lib/components/ImportExportModal.svelte`
 - Modify: `src/lib/components/TabBar.svelte` (wire the button from Task 5)
 
-- [ ] `exportState(state)` → returns formatted JSON string with
+- [x] `exportState(state)` → returns formatted JSON string with
       `schemaVersion`
-- [ ] `importState(jsonString)` → runs `validateState` + `migrate`, returns
+- [x] `importState(jsonString)` → runs `validateState` + `migrate`, returns
       `AppState` or throws with a human-readable error
-- [ ] modal UI: "Export" button triggers a file download named
+- [x] modal UI: "Export" button triggers a file download named
       `resource-planner-YYYY-MM-DD.json`; "Import" file picker reads the
       file, calls `importState`, and on success replaces `appState`
-- [ ] on schemaVersion mismatch, show a short notice ("upgraded from v1") but
-      proceed
-- [ ] on validation failure, show the error message and do NOT touch state
-- [ ] write tests: round-trip export → import yields identical state;
+- [x] on schemaVersion mismatch, show a short notice ("upgraded from v1") but
+      proceed (alert message appends "Upgraded from vN" when the prior
+      schemaVersion differs from the migrated one)
+- [x] on validation failure, show the error message and do NOT touch state
+- [x] write tests: round-trip export → import yields identical state;
       malformed JSON rejected; missing required field rejected; older
-      schemaVersion is migrated
-- [ ] run unit tests + manually exercise the modal in `npm run dev`
-- [ ] run e2e: export, clear localStorage, import the file, assert state
+      schemaVersion is migrated (no v<1 migration to test since CURRENT is 1;
+      missing-schemaVersion → v1 fallback covered instead)
+- [x] run unit tests + manually exercise the modal in `npm run dev` (modal
+      exercised via the e2e spec — full download + re-upload round-trip)
+- [x] run e2e: export, clear localStorage, import the file, assert state
       restored
-- [ ] tests — must pass before Task 10
+- [x] tests — must pass before Task 10
 
 ### Task 10: Polish & cross-cutting validation
 
