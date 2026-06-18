@@ -361,23 +361,23 @@ type AppState = {
 - Create: `src/lib/components/SimulationTotals.svelte`
 - Create: `e2e/simulations.spec.ts`
 
-- [ ] list simulations grouped by `packageLabel` (visual grouping only —
+- [x] list simulations grouped by `packageLabel` (visual grouping only —
       ungrouped section for sims without a label); "Add Simulation" button
-- [ ] `SimulationEditor.svelte`: form with name, model dropdown (filtered to
+- [x] `SimulationEditor.svelte`: form with name, model dropdown (filtered to
       defined models), resolution dropdown (filtered to model's defined
       resolutions), length (years), ensembles, dataPortfolio dropdown,
       overheadMultiplier (default 1.15), packageLabel (free text),
       `locked` checkbox revealing `pinnedHpcId` dropdown,
       `zeroCompute` checkbox
-- [ ] `SimulationTotals.svelte`: displays the computed
+- [x] `SimulationTotals.svelte`: displays the computed
       `{cpuHours, gpuHours, storageTb}` for the sim **per HPC** (since
       costs differ per HPC); uses `simulationCost` from Task 4
-- [ ] inline validation: locked → pinnedHpcId required; sim with no cost
+- [x] inline validation: locked → pinnedHpcId required; sim with no cost
       cell for its (model, resolution, hpc) shows "no cost defined" warning
-- [ ] `e2e/simulations.spec.ts`: create a model+cost+sim and assert the
+- [x] `e2e/simulations.spec.ts`: create a model+cost+sim and assert the
       computed totals match expected values
-- [ ] component smoke tests
-- [ ] run unit + e2e tests — must pass before Task 8
+- [x] component smoke tests
+- [x] run unit + e2e tests — must pass before Task 8
 
 ### Task 8: Plan / Assignment tab (the big one)
 
