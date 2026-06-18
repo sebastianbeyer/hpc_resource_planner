@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import ImportExportModal from './ImportExportModal.svelte';
 
   type Tab = { href: string; label: string };
 
@@ -15,6 +16,16 @@
   function isActive(href: string): boolean {
     if (href === '/') return pathname === '/';
     return pathname === href || pathname.startsWith(`${href}/`);
+  }
+
+  let showIO = false;
+
+  function openIO() {
+    showIO = true;
+  }
+
+  function closeIO() {
+    showIO = false;
   }
 </script>
 
@@ -43,8 +54,10 @@
     type="button"
     data-testid="import-export-button"
     class="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
-    on:click
+    on:click={openIO}
   >
     Import / Export
   </button>
 </nav>
+
+<ImportExportModal bind:open={showIO} onClose={closeIO} />
