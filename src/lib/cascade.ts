@@ -7,7 +7,7 @@ import type { AppState } from './types';
 export type HpcDeleteImpact = {
   assignmentCount: number;
   lockedSimCount: number;
-  costColumnCount: number;
+  computeCostColumnCount: number;
 };
 
 export function describeHpcDelete(state: AppState, hpcId: string): HpcDeleteImpact {
@@ -15,13 +15,13 @@ export function describeHpcDelete(state: AppState, hpcId: string): HpcDeleteImpa
   const lockedSimCount = state.simulations.filter(
     (s) => s.locked && s.pinnedHpcId === hpcId
   ).length;
-  let costColumnCount = 0;
+  let computeCostColumnCount = 0;
   for (const m of state.models) {
     for (const byHpc of Object.values(m.costs)) {
-      if (hpcId in byHpc) costColumnCount += 1;
+      if (hpcId in byHpc) computeCostColumnCount += 1;
     }
   }
-  return { assignmentCount, lockedSimCount, costColumnCount };
+  return { assignmentCount, lockedSimCount, computeCostColumnCount };
 }
 
 /**
@@ -29,7 +29,7 @@ export function describeHpcDelete(state: AppState, hpcId: string): HpcDeleteImpa
  *  - drops assignments whose hpcId matches
  *  - clears pinnedHpcId on simulations pinned to it (also clearing `locked`,
  *    because a locked sim must have a pin)
- *  - strips the matching column from every model's cost matrix
+ *  - strips the matching column from every model's compute cost matrix
  */
 export function cascadeDeleteHpc(state: AppState, hpcId: string): AppState {
   const hpcs = state.hpcs.filter((h) => h.id !== hpcId);

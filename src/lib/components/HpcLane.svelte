@@ -36,13 +36,17 @@
         <div class="text-[11px] font-semibold text-slate-700">{period.label || period.id}</div>
         <BudgetMeter
           used={pr?.cpuUsed ?? 0}
+          completed={pr?.cpuCompleted ?? 0}
           budget={pr?.cpuBudget ?? 0}
+          segments={pr?.cpuSegments ?? []}
           unit="CPU h"
           label="CPU"
         />
         <BudgetMeter
           used={pr?.gpuUsed ?? 0}
+          completed={pr?.gpuCompleted ?? 0}
           budget={pr?.gpuBudget ?? 0}
+          segments={pr?.gpuSegments ?? []}
           unit="GPU h"
           label="GPU"
         />
@@ -57,7 +61,9 @@
   <div class="my-3" data-testid="storage-meter-wrapper">
     <BudgetMeter
       used={rollup.storageUsedTb}
+      completed={rollup.storageCompletedTb}
       budget={rollup.storageBudgetTb}
+      segments={rollup.storageSegments}
       unit="TB"
       label="Storage (cumulative)"
     />

@@ -18,7 +18,8 @@
     const model: Model = {
       id: newId(),
       name: 'New Model',
-      costs: {}
+      costs: {},
+      storageTbPerSimMonthByResolution: {}
     };
     appState.update((s) => ({ ...s, models: [...s.models, model] }));
   }
@@ -64,6 +65,7 @@
     if (s.simulations.some((sim) => sim.resolution === resolution)) return true;
     for (const m of s.models) {
       if (m.costs[resolution]) return true;
+      if (m.storageTbPerSimMonthByResolution[resolution]) return true;
     }
     return false;
   }
@@ -71,10 +73,8 @@
   function portfolioReferenced(s: AppState, portfolio: string): boolean {
     if (s.simulations.some((sim) => sim.dataPortfolio === portfolio)) return true;
     for (const m of s.models) {
-      for (const byHpc of Object.values(m.costs)) {
-        for (const cell of Object.values(byHpc)) {
-          if (portfolio in cell.storageTbPerSimMonthByPortfolio) return true;
-        }
+      for (const byPortfolio of Object.values(m.storageTbPerSimMonthByResolution)) {
+        if (portfolio in byPortfolio) return true;
       }
     }
     return false;
@@ -106,8 +106,12 @@
       }
       const models = s.models.map((m) => {
         const costs = { ...m.costs };
+        const storageTbPerSimMonthByResolution = {
+          ...m.storageTbPerSimMonthByResolution
+        };
         for (const r of removed) delete costs[r];
-        return { ...m, costs };
+        for (const r of removed) delete storageTbPerSimMonthByResolution[r];
+        return { ...m, costs, storageTbPerSimMonthByResolution };
       });
       return { ...s, resolutions: next, models };
     });
@@ -120,20 +124,16 @@
         return { ...s, dataPortfolios: next };
       }
       const models = s.models.map((m) => {
-        const costs: Model['costs'] = {};
-        for (const [res, byHpc] of Object.entries(m.costs)) {
-          const newByHpc: typeof byHpc = {};
-          for (const [hpcId, cell] of Object.entries(byHpc)) {
-            const newStorage = { ...cell.storageTbPerSimMonthByPortfolio };
-            for (const p of removed) delete newStorage[p];
-            newByHpc[hpcId] = {
-              ...cell,
-              storageTbPerSimMonthByPortfolio: newStorage
-            };
-          }
-          costs[res] = newByHpc;
+        const storageTbPerSimMonthByResolution: Model['storageTbPerSimMonthByResolution'] =
+          {};
+        for (const [res, byPortfolio] of Object.entries(
+          m.storageTbPerSimMonthByResolution
+        )) {
+          const nextByPortfolio = { ...byPortfolio };
+          for (const p of removed) delete nextByPortfolio[p];
+          storageTbPerSimMonthByResolution[res] = nextByPortfolio;
         }
-        return { ...m, costs };
+        return { ...m, storageTbPerSimMonthByResolution };
       });
       return { ...s, dataPortfolios: next, models };
     });
@@ -145,7 +145,7 @@
     <div>
       <h1 class="text-2xl font-bold">Models</h1>
       <p class="text-sm text-slate-600">
-        Define each model and its per-HPC, per-resolution cost matrix.
+        Define each model's per-HPC compute costs and shared storage rates.
       </p>
     </div>
     <button
@@ -176,7 +176,7 @@
   {#if $modelsStore.length === 0}
     <EmptyState
       title="No models yet"
-      message="Add a model to define its CPU, GPU, and storage cost matrix per HPC and resolution."
+      message="Add a model to define its CPU/GPU compute costs per HPC and storage rates per resolution."
       actionLabel="+ Add Model"
       onAction={addModel}
     />

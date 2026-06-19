@@ -14,7 +14,7 @@ import { isOverBudget, rollup } from './rollup';
  */
 function buildState(): AppState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3,
     dataPortfolios: ['standard'],
     resolutions: ['tco79'],
     hpcs: [
@@ -46,10 +46,12 @@ function buildState(): AppState {
           tco79: {
             hpc1: {
               cpuHoursPerSimMonth: 100,
-              gpuHoursPerSimMonth: 10,
-              storageTbPerSimMonthByPortfolio: { standard: 0.5 }
+              gpuHoursPerSimMonth: 10
             }
           }
+        },
+        storageTbPerSimMonthByResolution: {
+          tco79: { standard: 0.5 }
         }
       }
     ],
@@ -63,7 +65,8 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
-        locked: false
+        locked: false,
+        completed: false
       },
       {
         id: 'sim-locked',
@@ -75,6 +78,7 @@ function buildState(): AppState {
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
         locked: true,
+        completed: false,
         pinnedHpcId: 'hpc1'
       },
       {
@@ -87,6 +91,7 @@ function buildState(): AppState {
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
         locked: false,
+        completed: false,
         zeroCompute: true
       }
     ],
@@ -112,8 +117,10 @@ describe('rollup', () => {
     state.simulations = []; // also drop locked sim so no synthesis
     const r = rollup(state);
     expect(r.hpc1.storageUsedTb).toBe(0);
+    expect(r.hpc1.storageCompletedTb).toBe(0);
     expect(r.hpc1.storageBudgetTb).toBe(100);
     expect(r.hpc1.periods.p1.cpuUsed).toBe(0);
+    expect(r.hpc1.periods.p1.cpuCompleted).toBe(0);
     expect(r.hpc1.periods.p1.cpuBudget).toBe(10_000);
     expect(r.hpc1.periods.p1.gpuBudget).toBe(1_000);
   });
@@ -129,15 +136,20 @@ describe('rollup', () => {
 
     // Storage = 6 + 6 + 6 = 18
     expect(hpc.storageUsedTb).toBe(18);
+    expect(hpc.storageCompletedTb).toBe(0);
 
     // p1 compute = 1200/2 (explicit) + 1200 (locked synthesised) + 0 (historic)
     //            = 600 + 1200 = 1800
     expect(hpc.periods.p1.cpuUsed).toBe(1800);
+    expect(hpc.periods.p1.cpuCompleted).toBe(0);
     expect(hpc.periods.p1.gpuUsed).toBe(180);
+    expect(hpc.periods.p1.gpuCompleted).toBe(0);
 
     // p2 compute = 1200/2 (explicit) only
     expect(hpc.periods.p2.cpuUsed).toBe(600);
+    expect(hpc.periods.p2.cpuCompleted).toBe(0);
     expect(hpc.periods.p2.gpuUsed).toBe(60);
+    expect(hpc.periods.p2.gpuCompleted).toBe(0);
 
     // Nothing should be over budget at these numbers.
     expect(hpc.storageOverBudget).toBe(false);
@@ -160,6 +172,26 @@ describe('rollup', () => {
     expect(hpc.periods.p1.gpuOverBudget).toBe(true);
     expect(hpc.storageOverBudget).toBe(true);
     expect(isOverBudget(r)).toBe(true);
+  });
+
+  it('tracks completed simulation usage separately from total usage', () => {
+    const state = buildState();
+    state.simulations[0].completed = true;
+    state.simulations = [state.simulations[0]];
+    state.assignments = [state.assignments[0]];
+
+    const r = rollup(state);
+
+    expect(r.hpc1.storageUsedTb).toBe(6);
+    expect(r.hpc1.storageCompletedTb).toBe(6);
+    expect(r.hpc1.periods.p1.cpuUsed).toBe(600);
+    expect(r.hpc1.periods.p1.cpuCompleted).toBe(600);
+    expect(r.hpc1.periods.p1.gpuUsed).toBe(60);
+    expect(r.hpc1.periods.p1.gpuCompleted).toBe(60);
+    expect(r.hpc1.periods.p2.cpuUsed).toBe(600);
+    expect(r.hpc1.periods.p2.cpuCompleted).toBe(600);
+    expect(r.hpc1.periods.p2.gpuUsed).toBe(60);
+    expect(r.hpc1.periods.p2.gpuCompleted).toBe(60);
   });
 
   it('synthesises a locked sims assignment onto the HPCs first period', () => {
@@ -244,10 +276,67 @@ describe('rollup', () => {
   });
 });
 
+describe('rollup segments', () => {
+  it('emits one segment per sim per axis, tagged with model + completed', () => {
+    const state = buildState();
+    // Mark sim-explicit as completed so we can check the flag flows through.
+    state.simulations[0].completed = true;
+    const r = rollup(state);
+    const hpc = r.hpc1;
+
+    // Storage: sim-explicit (6), sim-locked (6), sim-historic (6) → 3 segments.
+    expect(hpc.storageSegments.map((s) => s.simulationId).sort()).toEqual([
+      'sim-explicit',
+      'sim-historic',
+      'sim-locked'
+    ]);
+    const storageExplicit = hpc.storageSegments.find(
+      (s) => s.simulationId === 'sim-explicit'
+    )!;
+    expect(storageExplicit.modelName).toBe('Model One');
+    expect(storageExplicit.value).toBe(6);
+    expect(storageExplicit.completed).toBe(true);
+
+    // p1 CPU: sim-explicit (600) + sim-locked (1200). sim-historic is
+    // zeroCompute so it contributes nothing to compute segments.
+    const p1CpuIds = hpc.periods.p1.cpuSegments.map((s) => s.simulationId).sort();
+    expect(p1CpuIds).toEqual(['sim-explicit', 'sim-locked']);
+    const p1CpuExplicit = hpc.periods.p1.cpuSegments.find(
+      (s) => s.simulationId === 'sim-explicit'
+    )!;
+    expect(p1CpuExplicit.value).toBe(600);
+
+    // p2 CPU: only sim-explicit (600). sim-locked is fully on p1.
+    expect(hpc.periods.p2.cpuSegments.map((s) => s.simulationId)).toEqual([
+      'sim-explicit'
+    ]);
+
+    // GPU segments mirror the CPU ones but with gpu hours.
+    expect(hpc.periods.p1.gpuSegments.map((s) => s.simulationId).sort()).toEqual([
+      'sim-explicit',
+      'sim-locked'
+    ]);
+  });
+
+  it('omits zero-value segments (e.g. zeroCompute sims contribute no CPU/GPU segment)', () => {
+    const state = buildState();
+    // Keep only the historic sim.
+    state.simulations = state.simulations.filter((s) => s.id === 'sim-historic');
+    state.assignments = state.assignments.filter(
+      (a) => a.simulationId === 'sim-historic'
+    );
+    const r = rollup(state);
+    expect(r.hpc1.periods.p1.cpuSegments).toHaveLength(0);
+    expect(r.hpc1.periods.p1.gpuSegments).toHaveLength(0);
+    // Storage still gets a segment.
+    expect(r.hpc1.storageSegments).toHaveLength(1);
+  });
+});
+
 describe('isOverBudget', () => {
   it('returns false on a fresh rollup of an empty state', () => {
     const r = rollup({
-      schemaVersion: 1,
+      schemaVersion: 3,
       hpcs: [],
       models: [],
       simulations: [],

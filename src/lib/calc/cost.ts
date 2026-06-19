@@ -3,9 +3,9 @@ import type { Model, Simulation } from '../types';
 /**
  * Result of a cost calculation for a simulation (or package of sims) on a
  * specific HPC. `missingCost` is set when at least one input sim has no
- * matching cost cell defined for the (resolution, hpcId) pair — in that case
- * the missing sim contributes 0 compute and 0 storage, and the flag is
- * propagated for the UI to surface a warning.
+ * matching compute cost cell defined for the (resolution, hpcId) pair — in
+ * that case the missing sim contributes 0 compute, but storage can still be
+ * computed from the HPC-independent model storage rates.
  */
 export type SimCost = {
   cpuHours: number;
@@ -21,14 +21,14 @@ export type SimCost = {
  *   totalMonths     = lengthYears * 12 * ensembles
  *   cpuHours        = cost.cpuHoursPerSimMonth * totalMonths * overheadMultiplier
  *   gpuHours        = cost.gpuHoursPerSimMonth * totalMonths * overheadMultiplier
- *   storagePerMonth = cost.storageTbPerSimMonthByPortfolio[sim.dataPortfolio] ?? 0
+ *   storagePerMonth = model.storageTbPerSimMonthByResolution[resolution][portfolio] ?? 0
  *   storageTb       = storagePerMonth * totalMonths      // NO overhead on storage
  *
  * If `sim.zeroCompute` is true the compute totals are zeroed but storage is
  * still counted (historical/already-done data).
  *
- * If the model has no cost cell for the (resolution, hpcId) pair, the result
- * is a flagged zero (`missingCost: true`, all numeric fields 0).
+ * If the model has no compute cost cell for the (resolution, hpcId) pair, the
+ * result is flagged with `missingCost: true` and compute is zeroed.
  */
 export function simulationCost(
   sim: Simulation,
@@ -36,17 +36,17 @@ export function simulationCost(
   hpcId: string
 ): SimCost {
   const cost = model.costs[sim.resolution]?.[hpcId];
-  if (!cost) {
-    return { cpuHours: 0, gpuHours: 0, storageTb: 0, missingCost: true };
-  }
-
   const totalMonths = sim.lengthYears * 12 * sim.ensembles;
+  const storagePerMonth =
+    model.storageTbPerSimMonthByResolution[sim.resolution]?.[sim.dataPortfolio] ?? 0;
+  const storageTb = storagePerMonth * totalMonths;
+
+  if (!cost) {
+    return { cpuHours: 0, gpuHours: 0, storageTb, missingCost: true };
+  }
 
   let cpuHours = cost.cpuHoursPerSimMonth * totalMonths * sim.overheadMultiplier;
   let gpuHours = cost.gpuHoursPerSimMonth * totalMonths * sim.overheadMultiplier;
-
-  const storagePerMonth = cost.storageTbPerSimMonthByPortfolio[sim.dataPortfolio] ?? 0;
-  const storageTb = storagePerMonth * totalMonths;
 
   if (sim.zeroCompute === true) {
     cpuHours = 0;

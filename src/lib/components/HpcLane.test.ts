@@ -4,7 +4,9 @@ import HpcLane from './HpcLane.svelte';
 import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
 import type { HpcRollup } from '$lib/calc/rollup';
 
-const models: Model[] = [{ id: 'm1', name: 'IFS', costs: {} }];
+const models: Model[] = [
+  { id: 'm1', name: 'IFS', costs: {}, storageTbPerSimMonthByResolution: {} }
+];
 
 const hpc: Hpc = {
   id: 'h1',
@@ -18,24 +20,34 @@ const hpc: Hpc = {
 
 const rollup: HpcRollup = {
   storageUsedTb: 50,
+  storageCompletedTb: 10,
   storageBudgetTb: 100,
   storageOverBudget: false,
+  storageSegments: [],
   periods: {
     p1: {
       cpuUsed: 100,
+      cpuCompleted: 25,
       cpuBudget: 1000,
       cpuOverBudget: false,
+      cpuSegments: [],
       gpuUsed: 10,
+      gpuCompleted: 2,
       gpuBudget: 100,
-      gpuOverBudget: false
+      gpuOverBudget: false,
+      gpuSegments: []
     },
     p2: {
       cpuUsed: 200,
+      cpuCompleted: 0,
       cpuBudget: 2000,
       cpuOverBudget: false,
+      cpuSegments: [],
       gpuUsed: 20,
+      gpuCompleted: 0,
       gpuBudget: 200,
-      gpuOverBudget: false
+      gpuOverBudget: false,
+      gpuSegments: []
     }
   }
 };
@@ -50,7 +62,8 @@ const sims: Simulation[] = [
     ensembles: 1,
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
-    locked: false
+    locked: false,
+    completed: false
   }
 ];
 

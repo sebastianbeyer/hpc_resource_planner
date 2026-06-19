@@ -10,12 +10,14 @@ function makeModel(overrides: Partial<Model> = {}): Model {
       tco79: {
         hpc1: {
           cpuHoursPerSimMonth: 100,
-          gpuHoursPerSimMonth: 10,
-          storageTbPerSimMonthByPortfolio: {
-            standard: 0.5,
-            extended: 1.0
-          }
+          gpuHoursPerSimMonth: 10
         }
+      }
+    },
+    storageTbPerSimMonthByResolution: {
+      tco79: {
+        standard: 0.5,
+        extended: 1.0
       }
     },
     ...overrides
@@ -33,6 +35,7 @@ function makeSim(overrides: Partial<Simulation> = {}): Simulation {
     dataPortfolio: 'standard',
     overheadMultiplier: 1,
     locked: false,
+    completed: false,
     ...overrides
   };
 }
@@ -88,12 +91,14 @@ describe('simulationCost', () => {
     expect(r).toEqual({ cpuHours: 0, gpuHours: 0, storageTb: 0, missingCost: true });
   });
 
-  it('returns flagged zero when the HPC is missing from the resolution row', () => {
+  it('returns flagged zero compute but keeps storage when the HPC compute cell is missing', () => {
     const sim = makeSim();
     const model = makeModel();
     const r = simulationCost(sim, model, 'hpc-unknown');
     expect(r.missingCost).toBe(true);
     expect(r.cpuHours).toBe(0);
+    expect(r.gpuHours).toBe(0);
+    expect(r.storageTb).toBe(6);
   });
 
   it('missing dataPortfolio key contributes zero storage but normal compute', () => {

@@ -27,7 +27,11 @@
   function deleteHpc(id: string) {
     // Look up the HPC and impact in a single update-as-read pass.
     let hpcName = 'untitled';
-    let impact = { assignmentCount: 0, lockedSimCount: 0, costColumnCount: 0 };
+    let impact = {
+      assignmentCount: 0,
+      lockedSimCount: 0,
+      computeCostColumnCount: 0
+    };
     appState.update((s) => {
       const found = s.hpcs.find((h) => h.id === id);
       if (found) hpcName = found.name || 'untitled';
@@ -46,16 +50,16 @@
         `${impact.lockedSimCount} locked simulation${impact.lockedSimCount === 1 ? '' : 's'}`
       );
     }
-    if (impact.costColumnCount > 0) {
+    if (impact.computeCostColumnCount > 0) {
       refParts.push(
-        `${impact.costColumnCount} cost-matrix entr${impact.costColumnCount === 1 ? 'y' : 'ies'}`
+        `${impact.computeCostColumnCount} compute cost entr${impact.computeCostColumnCount === 1 ? 'y' : 'ies'}`
       );
     }
 
     const prompt =
       refParts.length === 0
         ? `Delete HPC "${hpcName}"?`
-        : `"${hpcName}" has ${refParts.join(', ')} referencing it. They will be unassigned/unpinned and the cost entries removed. Delete anyway?`;
+        : `"${hpcName}" has ${refParts.join(', ')} referencing it. They will be unassigned/unpinned and the compute cost entries removed. Delete anyway?`;
 
     if (!window.confirm(prompt)) return;
     appState.update((s) => cascadeDeleteHpc(s, id));

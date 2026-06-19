@@ -14,6 +14,7 @@ function sampleSim(overrides: Partial<Simulation> = {}): Simulation {
     dataPortfolio: '',
     overheadMultiplier: 1.15,
     locked: false,
+    completed: false,
     ...overrides
   };
 }
@@ -30,10 +31,12 @@ function sampleModel(): Model {
       tco79: {
         h1: {
           cpuHoursPerSimMonth: 100,
-          gpuHoursPerSimMonth: 10,
-          storageTbPerSimMonthByPortfolio: { standard: 0.5 }
+          gpuHoursPerSimMonth: 10
         }
       }
+    },
+    storageTbPerSimMonthByResolution: {
+      tco79: { standard: 0.5 }
     }
   };
 }
@@ -112,6 +115,26 @@ describe('SimulationEditor', () => {
     expect(getByTestId('warn-locked-no-pin')).toBeTruthy();
   });
 
+  it('toggles the completed flag', async () => {
+    const onChange = vi.fn();
+    const { getByTestId } = render(SimulationEditor, {
+      props: {
+        sim: sampleSim(),
+        models: [sampleModel()],
+        hpcs: sampleHpcs(),
+        dataPortfolios: ['standard'],
+        resolutions: ['tco79'],
+        onChange,
+        onDelete: vi.fn()
+      }
+    });
+
+    await fireEvent.click(getByTestId('sim-completed'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0][0] as Simulation).completed).toBe(true);
+  });
+
   it('shows the missing-cost warning when (modelId, resolution) has no matching cell on at least one HPC', () => {
     // Model has cost for tco79, but the sim picks tco399 which has none.
     const { getByTestId } = render(SimulationEditor, {
@@ -144,5 +167,32 @@ describe('SimulationEditor', () => {
       }
     });
     expect(queryByTestId('warn-missing-cost')).toBeNull();
+  });
+
+  it('keeps package-label edits local until blur', async () => {
+    const onChange = vi.fn();
+    const { getByTestId } = render(SimulationEditor, {
+      props: {
+        sim: sampleSim({ packageLabel: 'phase-a' }),
+        models: [sampleModel()],
+        hpcs: sampleHpcs(),
+        dataPortfolios: ['standard'],
+        resolutions: ['tco79'],
+        onChange,
+        onDelete: vi.fn()
+      }
+    });
+
+    const input = getByTestId('sim-package') as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'phase-ab' } });
+
+    expect(input.value).toBe('phase-ab');
+    expect(onChange).not.toHaveBeenCalled();
+
+    await fireEvent.blur(input);
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect((onChange.mock.calls[0][0] as Simulation).packageLabel).toBe('phase-ab');
   });
 });
