@@ -9,6 +9,12 @@
   /** Optional label printed above the bar, e.g. "CPU h · 2026". */
   export let label: string | undefined = undefined;
   /**
+   * Optional explanatory text rendered as a native tooltip on a small (i)
+   * icon next to the label. Used to surface bar legend / interaction hints
+   * without cluttering the layout.
+   */
+  export let info: string | undefined = undefined;
+  /**
    * Per-simulation breakdown. When present, the bar is drawn as a stack of
    * model-colored segments with native hover tooltips. When empty, the bar
    * falls back to the simple completed/active two-segment rendering.
@@ -51,14 +57,22 @@
   data-has-budget={hasBudget ? 'true' : 'false'}
 >
   {#if label}
-    <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-      {label}
+    <div class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+      <span>{label}</span>
+      {#if info}
+        <span
+          class="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-slate-400 text-[9px] font-bold normal-case leading-none text-slate-500"
+          title={info}
+          aria-label={info}
+          data-testid="meter-info"
+        >i</span>
+      {/if}
     </div>
   {/if}
 
   {#if !hasBudget}
     <div
-      class="h-2 w-full rounded bg-slate-200"
+      class="h-3 w-full rounded bg-slate-200"
       data-testid="meter-bar"
     ></div>
     <div class="text-[11px] italic text-slate-500" data-testid="meter-numeric">
@@ -66,7 +80,7 @@
     </div>
   {:else if hasSegments}
     <div
-      class="flex h-2 w-full gap-px overflow-hidden rounded bg-slate-200 ring-1 ring-inset"
+      class="flex h-3 w-full gap-px overflow-hidden rounded bg-slate-200 ring-1 ring-inset"
       class:ring-red-600={overBudget}
       class:ring-transparent={!overBudget}
       data-testid="meter-bar"
@@ -103,7 +117,7 @@
       {/if}
     </div>
   {:else}
-    <div class="flex h-2 w-full overflow-hidden rounded bg-slate-200" data-testid="meter-bar">
+    <div class="flex h-3 w-full overflow-hidden rounded bg-slate-200" data-testid="meter-bar">
       <div
         class="h-full bg-slate-400 transition-all"
         style="width: {completedWidth}%"

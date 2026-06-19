@@ -6,6 +6,9 @@
   import BudgetMeter from './BudgetMeter.svelte';
   import SimulationCard from './SimulationCard.svelte';
 
+  const barLegendInfo =
+    'Darker segments are completed simulations; lighter segments are planned. Hover any segment to see which simulation it belongs to.';
+
   export let hpc: Hpc;
   export let sims: Simulation[];
   export let models: Model[];
@@ -87,7 +90,8 @@
       budget={rollup.storageBudgetTb}
       segments={sortSegments(rollup.storageSegments)}
       unit="TB"
-      label="Storage (cumulative)"
+      label="Data Bridge Usage"
+      info={barLegendInfo}
       formatValue={formatStorageTb}
     />
   </div>
@@ -95,6 +99,12 @@
   {#if hpc.periods.length === 0}
     <p class="text-[11px] italic text-slate-500">No periods defined for this HPC.</p>
   {:else}
+    <div
+      class="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-600"
+      data-testid="compute-heading"
+    >
+      Compute
+    </div>
     {#each hpc.periods as period, idx (period.id)}
       {@const pr = rollup.periods[period.id]}
       {@const periodSims = simsForPeriod(period.id)}
@@ -130,6 +140,7 @@
             segments={sortSegments(pr?.cpuSegments ?? [])}
             unit="CPU h"
             label="CPU"
+            info={barLegendInfo}
             formatValue={formatHours}
           />
           <BudgetMeter
@@ -139,6 +150,7 @@
             segments={sortSegments(pr?.gpuSegments ?? [])}
             unit="GPU h"
             label="GPU"
+            info={barLegendInfo}
             formatValue={formatHours}
           />
         </div>
