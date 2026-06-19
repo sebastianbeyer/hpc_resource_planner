@@ -1,6 +1,7 @@
 <script lang="ts">
   import { appState } from '$lib/stores/state';
   import { downloadStateAsFile, importState } from '$lib/io/json';
+  import { buildShareUrl, URL_LENGTH_SOFT_CAP } from '$lib/io/url';
   import { CURRENT_SCHEMA_VERSION } from '$lib/schema';
   import { pushToast } from '$lib/stores/toast';
 
@@ -10,6 +11,38 @@
   let fileInput: HTMLInputElement | null = null;
   let selectedFile: File | null = null;
   let errorMessage = '';
+
+  let shareUrl = '';
+  let shareUrlComputing = false;
+  let shareUrlReqId = 0;
+
+  $: if (open && typeof window !== 'undefined') {
+    const my = ++shareUrlReqId;
+    shareUrlComputing = true;
+    void buildShareUrl($appState, window.location.href).then((url) => {
+      if (my === shareUrlReqId) {
+        shareUrl = url;
+        shareUrlComputing = false;
+      }
+    });
+  } else if (!open) {
+    shareUrlReqId++;
+    shareUrl = '';
+    shareUrlComputing = false;
+  }
+
+  $: shareUrlTooLong = shareUrl.length > URL_LENGTH_SOFT_CAP;
+
+  async function handleCopyShareUrl() {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      pushToast({ kind: 'success', message: 'Share URL copied to clipboard.', ttlMs: 3000 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      pushToast({ kind: 'error', message: `Could not copy: ${msg}`, ttlMs: 5000 });
+    }
+  }
 
   // Reset transient UI state whenever the modal is reopened.
   $: if (open) {
@@ -124,6 +157,49 @@
         >
           ×
         </button>
+      </div>
+
+      <div class="mb-6 rounded border border-slate-200 bg-slate-50 p-4" data-testid="io-share">
+        <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-600">
+          Share via URL
+        </h3>
+        <p class="mb-3 text-sm text-slate-700">
+          Encodes the entire state into the page URL. Anyone who opens the link is asked
+          whether to replace their local state.
+        </p>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            readonly
+            value={shareUrl}
+            placeholder={shareUrlComputing ? 'Encoding…' : ''}
+            class="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800"
+            data-testid="io-share-url"
+            aria-label="Shareable URL"
+          />
+          <button
+            type="button"
+            class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+            on:click={handleCopyShareUrl}
+            disabled={!shareUrl}
+            data-testid="io-share-copy"
+          >
+            Copy
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-slate-600" data-testid="io-share-length">
+          {#if shareUrl}
+            URL length: {shareUrl.length} characters (compressed).
+          {:else}
+            Encoding…
+          {/if}
+          {#if shareUrlTooLong}
+            <span class="font-semibold text-amber-700">
+              Warning: longer than {URL_LENGTH_SOFT_CAP} chars — may get truncated by some
+              clients. Consider exporting JSON instead.
+            </span>
+          {/if}
+        </p>
       </div>
 
       <div class="grid gap-6 md:grid-cols-2">
