@@ -92,6 +92,9 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   await page.waitForLoadState('networkidle');
 
   const tray = page.getByTestId('unassigned-tray');
+  // The sim is marked completed, so it lands inside the (expanded-by-default)
+  // Done section in the tray.
+  await expect(tray.getByTestId('tray-toggle-done')).toBeVisible();
   const trayCard = tray.getByTestId('simulation-card').first();
   await expect(trayCard).toBeVisible();
 
@@ -110,11 +113,14 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   await expect(lane.getByTestId('simulation-card')).toHaveCount(1);
   const assignedCard = lane.getByTestId('simulation-card').first();
 
-  await expect(assignedCard.getByTestId('card-compute-share')).toContainText(
-    'CPU 12% / GPU 12%'
+  await expect(assignedCard.getByTestId('card-cpu-share')).toContainText(
+    'CPU: 120 H (12%)'
+  );
+  await expect(assignedCard.getByTestId('card-gpu-share')).toContainText(
+    'GPU: 12 H (12%)'
   );
   await expect(assignedCard.getByTestId('card-storage-share')).toContainText(
-    'Storage 60%'
+    'Storage: 6 TB (60%)'
   );
   await assignedCard.getByTestId('card-actions').click();
   await expect(assignedCard.getByTestId('card-actions-menu')).toBeVisible();
@@ -124,18 +130,18 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   // First budget-meter in the lane is "CPU" for the (only) period.
   // Sim cost: 1 sim × 12 months × 10 cpuPerMonth × 1 overhead = 120 CPU h
   const cpuMeter = lane.getByTestId('budget-meter').first();
-  await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('120');
-  await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('1,000');
+  await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('120 H');
+  await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('1 kH');
   await expect(cpuMeter.getByTestId('completed-used')).toContainText(
-    '120 CPU h completed'
+    '120 H used (12%)'
   );
   await expect(cpuMeter).toHaveAttribute('data-over-budget', 'false');
 
   // Storage meter: 0.5 × 12 = 6 TB / 10 TB → not over budget
   const storageWrapper = lane.getByTestId('storage-meter-wrapper');
-  await expect(storageWrapper.getByTestId('meter-numeric')).toContainText('6');
+  await expect(storageWrapper.getByTestId('meter-numeric')).toContainText('6 TB');
   await expect(storageWrapper.getByTestId('completed-used')).toContainText(
-    '6 TB completed'
+    '6 TB used (60%)'
   );
   await expect(storageWrapper.getByTestId('budget-meter')).toHaveAttribute(
     'data-over-budget',
@@ -145,6 +151,9 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   // ---- step 6: blow the budget by setting lengthYears to 20 ----
   await page.goto('/simulations');
   await page.waitForLoadState('networkidle');
+  // The sim list now defaults to collapsed on mount — expand the only sim
+  // before reaching for its fields.
+  await page.getByTestId('toggle-sim').first().click();
   await page.waitForFunction(() => {
     return document.querySelector('[data-testid="sim-length"]') !== null;
   });
@@ -172,8 +181,8 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
 
   // ---- step 8: storage meter went red too (0.5 × 240 = 120 TB / 10 TB) ----
   const storage2 = lane2.getByTestId('storage-meter-wrapper');
-  await expect(storage2.getByTestId('meter-numeric')).toContainText('120');
-  await expect(storage2.getByTestId('meter-numeric')).toContainText('10');
+  await expect(storage2.getByTestId('meter-numeric')).toContainText('120 TB');
+  await expect(storage2.getByTestId('meter-numeric')).toContainText('10 TB');
   await expect(storage2.getByTestId('budget-meter')).toHaveAttribute(
     'data-over-budget',
     'true'

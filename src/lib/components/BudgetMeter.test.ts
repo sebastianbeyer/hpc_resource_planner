@@ -61,7 +61,7 @@ describe('BudgetMeter', () => {
     expect(completed.getAttribute('style')).toContain('width: 10%');
     expect(active.className).toMatch(/bg-emerald-500/);
     expect(active.getAttribute('style')).toContain('width: 20%');
-    expect(getByTestId('completed-used').textContent).toContain('100 CPU h completed');
+    expect(getByTestId('completed-used').textContent).toContain('100 CPU h used (10%)');
   });
 
   it('renders the label when provided', () => {
