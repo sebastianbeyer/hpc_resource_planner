@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { simulationCost } from '$lib/calc/cost';
   import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
   import PeriodSplitEditor from './PeriodSplitEditor.svelte';
 
@@ -15,10 +16,24 @@
 
   let showSplitEditor = false;
   let showAssignMenu = false;
+  let showActionMenu = false;
 
   $: model = models.find((m) => m.id === sim.modelId);
   $: hpc = hpcId ? hpcs.find((h) => h.id === hpcId) : undefined;
   $: periods = hpc?.periods ?? [];
+  $: moveTargets = hpcId ? hpcs.filter((h) => h.id !== hpcId) : [];
+  $: hasPlanActions = hpcId !== undefined && (assignment !== undefined || !sim.locked);
+
+  const percentFmt = new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0
+  });
+
+  type BudgetShare = {
+    compute: string;
+    storage: string;
+    missingCompute: boolean;
+  };
 
   function compactSplit(split: Record<string, number> | undefined): string {
     if (!split || periods.length === 0) return '—';
@@ -33,6 +48,53 @@
 
   function handleSplitChange(split: Record<string, number>) {
     onSplitChange?.(split);
+  }
+
+  function formatPercent(used: number, budget: number): string {
+    if (budget <= 0) return used === 0 ? '0%' : 'n/a';
+    return `${percentFmt.format((used / budget) * 100)}%`;
+  }
+
+  function computeAppliedFraction(a: Assignment | undefined, targetHpc: Hpc): number {
+    if (!a) return targetHpc.periods.length > 0 ? 1 : 0;
+    const periodIds = new Set(targetHpc.periods.map((p) => p.id));
+    let sum = 0;
+    for (const [periodId, fraction] of Object.entries(a.periodSplit)) {
+      if (periodIds.has(periodId)) sum += fraction || 0;
+    }
+    return sum;
+  }
+
+  $: budgetShare = (() => {
+    if (!hpcId || !hpc || !model) return undefined as BudgetShare | undefined;
+
+    const cost = simulationCost(sim, model, hpcId);
+    const computeFraction = computeAppliedFraction(assignment, hpc);
+    const cpuBudget = hpc.periods.reduce((acc, p) => acc + p.cpuHoursBudget, 0);
+    const gpuBudget = hpc.periods.reduce((acc, p) => acc + p.gpuHoursBudget, 0);
+    const cpuShare = formatPercent(cost.cpuHours * computeFraction, cpuBudget);
+    const gpuShare = formatPercent(cost.gpuHours * computeFraction, gpuBudget);
+
+    return {
+      compute: cost.missingCost ? '—' : `CPU ${cpuShare} / GPU ${gpuShare}`,
+      storage: formatPercent(cost.storageTb, hpc.storageBudgetTb),
+      missingCompute: cost.missingCost === true
+    };
+  })();
+
+  function toggleSplitEditor() {
+    showSplitEditor = !showSplitEditor;
+    showActionMenu = false;
+  }
+
+  function unassignFromMenu() {
+    showActionMenu = false;
+    onUnassign?.();
+  }
+
+  function moveFromMenu(targetHpcId: string) {
+    showActionMenu = false;
+    onAssign?.(targetHpcId);
   }
 </script>
 
@@ -76,70 +138,90 @@
           {compactSplit(assignment.periodSplit)}
         </p>
       {/if}
+      {#if hpcId && budgetShare}
+        <p
+          class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-slate-600"
+          data-testid="card-budget-share"
+        >
+          <span data-testid="card-compute-share" data-missing={budgetShare.missingCompute}>
+            Compute {budgetShare.compute}
+          </span>
+          <span data-testid="card-storage-share">Storage {budgetShare.storage}</span>
+        </p>
+      {/if}
     </div>
 
-    {#if hpcId}
-      <div class="flex flex-shrink-0 flex-col items-end gap-1">
+    {#if hpcId && hasPlanActions}
+      <div class="relative flex-shrink-0">
         <button
           type="button"
-          class="rounded border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-          on:click={() => (showSplitEditor = !showSplitEditor)}
-          data-testid="edit-split"
+          class="flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-sm font-semibold leading-none text-slate-700 hover:bg-slate-100"
+          on:click={() => (showActionMenu = !showActionMenu)}
+          data-testid="card-actions"
+          aria-haspopup="menu"
+          aria-expanded={showActionMenu}
+          aria-label={`Actions for ${sim.name || 'simulation'}`}
         >
-          {showSplitEditor ? 'Close' : 'Edit split'}
+          ...
         </button>
-        {#if !sim.locked}
-          <button
-            type="button"
-            class="rounded border border-red-300 px-2 py-0.5 text-[11px] font-medium text-red-700 hover:bg-red-50"
-            on:click={() => onUnassign?.()}
-            data-testid="unassign"
+        {#if showActionMenu}
+          <ul
+            class="absolute right-0 z-10 mt-1 w-48 rounded border border-slate-300 bg-white p-1 shadow-lg"
+            data-testid="card-actions-menu"
+            role="menu"
           >
-            Unassign
-          </button>
-          <div class="relative">
-            <button
-              type="button"
-              class="rounded border border-slate-300 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
-              on:click={() => (showAssignMenu = !showAssignMenu)}
-              data-testid="move-to"
-              aria-haspopup="menu"
-              aria-expanded={showAssignMenu}
-              aria-label={`Move ${sim.name || 'simulation'} to another HPC`}
-            >
-              Move to ▾
-            </button>
-            {#if showAssignMenu}
-              <ul
-                class="absolute right-0 z-10 mt-1 w-44 rounded border border-slate-300 bg-white p-1 shadow-lg"
-                data-testid="move-menu"
-                role="menu"
-              >
-                {#each hpcs as h (h.id)}
-                  {#if h.id !== hpcId}
-                    <li role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
-                        on:click={() => {
-                          showAssignMenu = false;
-                          onAssign?.(h.id);
-                        }}
-                        data-testid="move-to-option"
-                        data-target-hpc-id={h.id}
-                      >
-                        {h.name || h.id}
-                      </button>
-                    </li>
-                  {/if}
-                {/each}
-              </ul>
+            {#if assignment}
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
+                  on:click={toggleSplitEditor}
+                  data-testid="edit-split"
+                >
+                  {showSplitEditor ? 'Close split editor' : 'Edit split'}
+                </button>
+              </li>
             {/if}
-          </div>
+            {#if !sim.locked}
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full rounded px-2 py-1 text-left text-[11px] text-red-700 hover:bg-red-50"
+                  on:click={unassignFromMenu}
+                  data-testid="unassign"
+                >
+                  Unassign
+                </button>
+              </li>
+              {#if moveTargets.length > 0}
+                <li
+                  class="mt-1 border-t border-slate-200 px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
+                  role="none"
+                >
+                  Move to
+                </li>
+                {#each moveTargets as h (h.id)}
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
+                      on:click={() => moveFromMenu(h.id)}
+                      data-testid="move-to-option"
+                      data-target-hpc-id={h.id}
+                    >
+                      {h.name || h.id}
+                    </button>
+                  </li>
+                {/each}
+              {/if}
+            {/if}
+          </ul>
         {/if}
       </div>
-    {:else}
+    {:else if !hpcId}
       <div class="relative flex-shrink-0">
         <button
           type="button"

@@ -3,13 +3,38 @@ import { render, fireEvent } from '@testing-library/svelte';
 import SimulationCard from './SimulationCard.svelte';
 import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
 
-const models: Model[] = [{ id: 'm1', name: 'IFS', costs: {} }];
+const models: Model[] = [
+  {
+    id: 'm1',
+    name: 'IFS',
+    costs: {
+      tco79: {
+        h1: {
+          cpuHoursPerSimMonth: 10,
+          gpuHoursPerSimMonth: 1
+        }
+      }
+    },
+    storageTbPerSimMonthByResolution: {
+      tco79: { standard: 0.5 }
+    }
+  }
+];
 const hpcs: Hpc[] = [
   {
     id: 'h1',
     name: 'Levante',
     storageBudgetTb: 100,
-    periods: [{ id: 'p1', label: '2026', cpuHoursBudget: 0, gpuHoursBudget: 0 }]
+    periods: [{ id: 'p1', label: '2026', cpuHoursBudget: 1200, gpuHoursBudget: 120 }]
+  }
+];
+const hpcsWithMoveTarget: Hpc[] = [
+  ...hpcs,
+  {
+    id: 'h2',
+    name: 'LUMI',
+    storageBudgetTb: 200,
+    periods: [{ id: 'p2', label: '2027', cpuHoursBudget: 2400, gpuHoursBudget: 240 }]
   }
 ];
 
@@ -24,6 +49,7 @@ function sim(overrides: Partial<Simulation> = {}): Simulation {
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
     locked: false,
+    completed: false,
     ...overrides
   };
 }
@@ -73,11 +99,52 @@ describe('SimulationCard', () => {
     const { getByTestId } = render(SimulationCard, {
       props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment, onUnassign }
     });
+    await fireEvent.click(getByTestId('card-actions'));
     await fireEvent.click(getByTestId('unassign'));
     expect(onUnassign).toHaveBeenCalled();
   });
 
-  it('in an HPC lane, hides Unassign for locked sims', () => {
+  it('opens the split editor from the actions menu', async () => {
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 1 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment }
+    });
+
+    await fireEvent.click(getByTestId('card-actions'));
+    await fireEvent.click(getByTestId('edit-split'));
+
+    expect(getByTestId('period-split-editor')).toBeTruthy();
+  });
+
+  it('moves to another HPC from the actions menu', async () => {
+    const onAssign = vi.fn();
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 1 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: {
+        sim: sim(),
+        models,
+        hpcs: hpcsWithMoveTarget,
+        hpcId: 'h1',
+        assignment,
+        onAssign
+      }
+    });
+
+    await fireEvent.click(getByTestId('card-actions'));
+    await fireEvent.click(getByTestId('move-to-option'));
+
+    expect(onAssign).toHaveBeenCalledWith('h2');
+  });
+
+  it('in an HPC lane, hides Unassign for locked sims', async () => {
     const assignment: Assignment = {
       simulationId: 's1',
       hpcId: 'h1',
@@ -92,6 +159,7 @@ describe('SimulationCard', () => {
         assignment
       }
     });
+    await fireEvent.click(queryByTestId('card-actions')!);
     expect(queryByTestId('unassign')).toBeNull();
   });
 
@@ -106,5 +174,27 @@ describe('SimulationCard', () => {
     });
     expect(getByTestId('card-split').textContent).toMatch(/2026/);
     expect(getByTestId('card-split').textContent).toMatch(/100%/);
+  });
+
+  it('renders this sims budget share of the assigned HPC', () => {
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 1 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: {
+        sim: sim({ overheadMultiplier: 1 }),
+        models,
+        hpcs,
+        hpcId: 'h1',
+        assignment
+      }
+    });
+
+    expect(getByTestId('card-compute-share').textContent).toContain(
+      'Compute CPU 10% / GPU 10%'
+    );
+    expect(getByTestId('card-storage-share').textContent).toContain('Storage 6%');
   });
 });

@@ -3,8 +3,8 @@
   // called for drag-and-drop via `svelte-dnd-action`. That library only
   // documents Svelte 3/4 support and the wider ecosystem hasn't settled on a
   // Svelte 5 story for it yet, so per the task's explicit fallback we use a
-  // click-driven "Assign to ▾" / "Move to ▾" menu instead. Functionality —
-  // assigning, unassigning, moving, period split editing — is preserved.
+  // click-driven menus instead. Functionality — assigning, unassigning,
+  // moving, period split editing — is preserved.
   import EmptyState from '$lib/components/EmptyState.svelte';
   import HpcLane from '$lib/components/HpcLane.svelte';
   import UnassignedTray from '$lib/components/UnassignedTray.svelte';
