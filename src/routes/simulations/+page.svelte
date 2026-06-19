@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { afterNavigate } from '$app/navigation';
+  import { page } from '$app/stores';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import SimulationEditor from '$lib/components/SimulationEditor.svelte';
   import SimulationTotals from '$lib/components/SimulationTotals.svelte';
@@ -130,6 +132,31 @@
 
   const intFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const floatFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+
+  function parseTargetSimId(hash: string): string | undefined {
+    const match = hash.match(/^#sim-(.+)$/);
+    return match?.[1];
+  }
+
+  function scrollToSim(simId: string) {
+    setSimExpanded(simId, true);
+    // Two rAFs: first lets Svelte commit the expanded shell to the DOM, second
+    // lets the browser lay it out before we scroll — without this we land at
+    // the top because the target hasn't been positioned yet.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(
+          `[data-testid="sim-shell"][data-sim-id="${CSS.escape(simId)}"]`,
+        );
+        el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  }
+
+  afterNavigate(() => {
+    const simId = parseTargetSimId($page.url.hash);
+    if (simId) scrollToSim(simId);
+  });
 </script>
 
 <div class="space-y-4">

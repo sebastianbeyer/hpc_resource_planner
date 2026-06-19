@@ -82,6 +82,7 @@ function baseProps(overrides: Record<string, unknown> = {}) {
     onUnassign: vi.fn(),
     onSplitChange: vi.fn(),
     onCompletedChange: vi.fn(),
+    onEditSimulation: vi.fn(),
     ...overrides
   };
 }

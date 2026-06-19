@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
 
   onMount(() => {
-    goto(resolve('/hpcs'), { replaceState: true });
+    goto(resolve('/plan'), { replaceState: true });
   });
 </script>
 

@@ -2,6 +2,8 @@
   // Drag-and-drop uses the native HTML5 DnD API (Svelte 5 has no settled
   // svelte-dnd-action story yet). The action menus on each card remain the
   // accessible fallback for assign / unassign / move / split-edit.
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import HpcLane from '$lib/components/HpcLane.svelte';
   import UnassignedTray from '$lib/components/UnassignedTray.svelte';
@@ -12,6 +14,7 @@
     modelsStore,
     simulationsStore
   } from '$lib/stores/state';
+  import { setSimExpanded } from '$lib/stores/ui-prefs';
   import {
     assignedByHpc,
     rollupStore,
@@ -54,6 +57,11 @@
         sim.id === simId ? { ...sim, completed } : sim
       )
     }));
+  }
+
+  function editSimulation(simId: string) {
+    setSimExpanded(simId, true);
+    goto(`${resolve('/simulations')}#sim-${simId}`, { noScroll: true });
   }
 </script>
 
@@ -104,6 +112,7 @@
             onUnassign={unassign}
             onSplitChange={setSplit}
             onCompletedChange={setCompleted}
+            onEditSimulation={editSimulation}
           />
         {/each}
       </div>

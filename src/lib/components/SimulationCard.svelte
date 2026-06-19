@@ -21,6 +21,7 @@
   export let onUnassign: (() => void) | undefined = undefined;
   export let onSplitChange: ((split: Record<string, number>) => void) | undefined = undefined;
   export let onCompletedChange: ((completed: boolean) => void) | undefined = undefined;
+  export let onEditSimulation: (() => void) | undefined = undefined;
 
   let showSplitEditor = false;
   let showAssignMenu = false;
@@ -124,6 +125,11 @@
   function unassignFromMenu() {
     showActionMenu = false;
     onUnassign?.();
+  }
+
+  function editFromMenu() {
+    showActionMenu = false;
+    onEditSimulation?.();
   }
 
   function moveFromMenu(targetHpcId: string, targetPeriodId: string) {
@@ -257,6 +263,19 @@
               data-testid="card-actions-menu"
               role="menu"
             >
+              {#if onEditSimulation}
+                <li role="none">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
+                    on:click={editFromMenu}
+                    data-testid="edit-simulation"
+                  >
+                    Edit simulation
+                  </button>
+                </li>
+              {/if}
               {#if assignment}
                 <li role="none">
                   <button

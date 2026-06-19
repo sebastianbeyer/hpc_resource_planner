@@ -19,6 +19,7 @@
   export let onUnassign: (simId: string) => void;
   export let onSplitChange: (simId: string, split: Record<string, number>) => void;
   export let onCompletedChange: (simId: string, completed: boolean) => void;
+  export let onEditSimulation: (simId: string) => void;
 
   let dragOverPeriod: string | null = null;
   let showPlanned: Record<string, boolean> = {};
@@ -197,6 +198,7 @@
                       onUnassign={() => onUnassign(sim.id)}
                       onSplitChange={(split) => onSplitChange(sim.id, split)}
                       onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+                      onEditSimulation={() => onEditSimulation(sim.id)}
                     />
                   {/each}
                 </div>
@@ -237,6 +239,7 @@
                         onUnassign={() => onUnassign(sim.id)}
                         onSplitChange={(split) => onSplitChange(sim.id, split)}
                         onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+                        onEditSimulation={() => onEditSimulation(sim.id)}
                       />
                     {/each}
                   </div>
