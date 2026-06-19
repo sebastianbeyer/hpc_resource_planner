@@ -97,7 +97,7 @@
         </span>
       {/if}
       {#if overBudget}
-        <span class="ml-1 rounded bg-red-600 px-1 py-0.5 text-[10px] font-bold text-white" data-testid="over-budget-tag">
+        <span class="ml-1 inline-block whitespace-nowrap rounded bg-red-600 px-1 py-0.5 text-[10px] font-bold text-white" data-testid="over-budget-tag">
           OVER BUDGET
         </span>
       {/if}
@@ -131,7 +131,7 @@
         </span>
       {/if}
       {#if overBudget}
-        <span class="ml-1 rounded bg-red-600 px-1 py-0.5 text-[10px] font-bold text-white" data-testid="over-budget-tag">
+        <span class="ml-1 inline-block whitespace-nowrap rounded bg-red-600 px-1 py-0.5 text-[10px] font-bold text-white" data-testid="over-budget-tag">
           OVER BUDGET
         </span>
       {/if}

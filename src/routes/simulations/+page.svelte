@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
   import SimulationEditor from '$lib/components/SimulationEditor.svelte';
   import SimulationTotals from '$lib/components/SimulationTotals.svelte';
@@ -12,23 +11,15 @@
     resolutionsStore,
     simulationsStore,
   } from '$lib/stores/state';
+  import { forgetSimUi, setSimExpanded, uiPrefs } from '$lib/stores/ui-prefs';
   import type { Simulation } from '$lib/types';
   import { newId } from '$lib/util/id';
 
   const UNGROUPED = '__ungrouped__';
-  // Start every existing sim collapsed on mount; sims added/duplicated later
-  // stay expanded (addSimulation/duplicateSim explicitly exclude their new id).
-  // The deferred timer lets the layout's onMount populate the store from
-  // localStorage first — the layout's onMount fires after this page's, so a
-  // synchronous read here would see the default empty state.
-  let collapsedSimIds = new Set<string>();
-
-  onMount(() => {
-    const t = setTimeout(() => {
-      collapsedSimIds = new Set($simulationsStore.map((s) => s.id));
-    }, 0);
-    return () => clearTimeout(t);
-  });
+  // Default-collapsed: a sim is expanded only if its id sits in the persisted
+  // expandedSimIds set. New / duplicated sims are added to the set so they
+  // open immediately, matching the previous in-memory behavior.
+  $: expandedSimIds = new Set($uiPrefs.expandedSimIds);
 
   function addSimulation() {
     const sim: Simulation = {
@@ -43,8 +34,7 @@
       completed: false,
     };
     appState.update((s) => ({ ...s, simulations: [...s.simulations, sim] }));
-
-    collapsedSimIds = withoutCollapsedId(collapsedSimIds, sim.id);
+    setSimExpanded(sim.id, true);
   }
 
   function updateSim(next: Simulation) {
@@ -61,8 +51,7 @@
       ...s,
       simulations: s.simulations.filter((sim) => sim.id !== id),
     }));
-
-    collapsedSimIds = withoutCollapsedId(collapsedSimIds, id);
+    forgetSimUi(id);
   }
 
   function duplicateSim(source: Simulation) {
@@ -85,7 +74,7 @@
       return { ...s, simulations };
     });
 
-    collapsedSimIds = withoutCollapsedId(collapsedSimIds, copy.id);
+    setSimExpanded(copy.id, true);
   }
 
   function duplicatedName(name: string) {
@@ -94,20 +83,7 @@
   }
 
   function toggleSim(id: string) {
-    const next = new Set(collapsedSimIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    collapsedSimIds = next;
-  }
-
-  function withoutCollapsedId(ids: Set<string>, id: string) {
-    if (!ids.has(id)) return ids;
-    const next = new Set(ids);
-    next.delete(id);
-    return next;
+    setSimExpanded(id, !expandedSimIds.has(id));
   }
 
   function modelName(sim: Simulation) {
@@ -228,7 +204,7 @@
 
         <div class="space-y-3">
           {#each group.sims as sim (sim.id)}
-            {@const expanded = !collapsedSimIds.has(sim.id)}
+            {@const expanded = expandedSimIds.has(sim.id)}
             <div
               class="rounded-lg border border-slate-200 bg-white shadow-sm"
               data-testid="sim-shell"

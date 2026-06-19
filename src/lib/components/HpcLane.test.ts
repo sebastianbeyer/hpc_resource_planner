@@ -166,6 +166,9 @@ describe('HpcLane', () => {
     ) as HTMLElement;
     expect(toggle.textContent).toMatch(/Done/);
     expect(toggle.textContent).toMatch(/1/);
+    // Collapsed by default — opening it reveals the section.
+    expect(p1.querySelector('[data-testid="period-done-section"]')).toBeNull();
+    await fireEvent.click(toggle);
     expect(
       p1.querySelectorAll(
         '[data-testid="period-done-section"] [data-testid="simulation-card"]'

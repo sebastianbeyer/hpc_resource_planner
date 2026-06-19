@@ -50,3 +50,22 @@ export function modelColor(
   const entry = override ?? PALETTE[hash(modelId) % PALETTE.length];
   return completed ? entry.completed : entry.active;
 }
+
+// Active-shade backgrounds where white text would have poor contrast — those
+// few need a dark label instead. The completed (-700) shades are dark enough
+// for white text across the whole palette.
+const LIGHT_ACTIVE_BG = new Set([
+  'bg-amber-500',
+  'bg-yellow-500',
+  'bg-cyan-500'
+]);
+
+export function modelBadgeClass(
+  modelId: string,
+  completed: boolean,
+  modelName?: string
+): string {
+  const bg = modelColor(modelId, completed, modelName);
+  const text = !completed && LIGHT_ACTIVE_BG.has(bg) ? 'text-slate-900' : 'text-white';
+  return `${bg} ${text}`;
+}

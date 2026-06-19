@@ -1,6 +1,7 @@
 <script lang="ts">
   import { simulationCost } from '$lib/calc/cost';
   import type { Assignment, Hpc, Model, Period, Simulation } from '$lib/types';
+  import { modelBadgeClass } from '$lib/util/colors';
   import { formatHours, formatStorageTb } from '$lib/util/format';
   import PeriodSplitEditor from './PeriodSplitEditor.svelte';
 
@@ -167,8 +168,17 @@
         {/if}
       </div>
       <p class="mt-0.5 text-[11px] text-slate-600">
-        <span>{model?.name ?? '(no model)'}</span>
-        <span> · {sim.resolution || '(no resolution)'}</span>
+        {#if model}
+          <span
+            class="mr-1 inline-block rounded {modelBadgeClass(sim.modelId, sim.completed, model.name)} px-1.5 py-0.5 text-[10px] font-medium"
+            data-testid="model-badge"
+          >
+            {model.name}
+          </span>
+        {:else}
+          <span>(no model)</span>
+        {/if}
+        <span>{sim.resolution || '(no resolution)'}</span>
         <span> · {sim.lengthYears}y × {sim.ensembles}</span>
         {#if hpcId && assignment}
           {@const split = compactSplit(assignment.periodSplit)}
@@ -189,22 +199,19 @@
         >
           {#if r.missingCompute}
             <span data-testid="card-compute-share" data-missing="true">
-              Compute —
+              —
             </span>
-          {:else if showCpu || showGpu}
-            <span data-testid="card-compute-share" data-missing="false">
-              Compute
-              {#if showCpu}
-                <span data-testid="card-cpu-share">
-                  CPU: {formatHours(r.cpuHours)} ({r.cpuPercent})
-                </span>
-              {/if}
-              {#if showGpu}
-                <span data-testid="card-gpu-share">
-                  GPU: {formatHours(r.gpuHours)} ({r.gpuPercent})
-                </span>
-              {/if}
-            </span>
+          {:else}
+            {#if showCpu}
+              <span data-testid="card-cpu-share">
+                CPU: {formatHours(r.cpuHours)} ({r.cpuPercent})
+              </span>
+            {/if}
+            {#if showGpu}
+              <span data-testid="card-gpu-share">
+                GPU: {formatHours(r.gpuHours)} ({r.gpuPercent})
+              </span>
+            {/if}
           {/if}
           <span data-testid="card-storage-share">
             {#if (showCpu || showGpu || r.missingCompute)}·{/if}

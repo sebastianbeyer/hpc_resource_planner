@@ -3,6 +3,7 @@
   import '../app.css';
   import { appState } from '$lib/stores/state';
   import { attachAutosave, loadFromLocalStorage } from '$lib/stores/persistence';
+  import { attachUiPrefsAutosave, loadUiPrefs } from '$lib/stores/ui-prefs';
   import { decodeStateFromParam, readConfigParam, stripConfigParam } from '$lib/io/url';
   import { pushToast } from '$lib/stores/toast';
   import TabBar from '$lib/components/TabBar.svelte';
@@ -56,8 +57,13 @@
       );
     }
 
+    loadUiPrefs();
     const unsub = attachAutosave(appState);
-    return () => unsub();
+    const unsubUi = attachUiPrefsAutosave();
+    return () => {
+      unsub();
+      unsubUi();
+    };
   });
 </script>
 

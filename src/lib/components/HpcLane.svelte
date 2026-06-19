@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
   import type { HpcRollup, MeterSegment } from '$lib/calc/rollup';
+  import { setPeriodDoneOpen, uiPrefs } from '$lib/stores/ui-prefs';
   import { formatHours, formatStorageTb } from '$lib/util/format';
   import BudgetMeter from './BudgetMeter.svelte';
   import SimulationCard from './SimulationCard.svelte';
@@ -17,7 +18,8 @@
   export let onCompletedChange: (simId: string, completed: boolean) => void;
 
   let dragOverPeriod: string | null = null;
-  let showDone: Record<string, boolean> = {};
+  let showPlanned: Record<string, boolean> = {};
+  $: showDone = $uiPrefs.periodDoneOpen;
 
   function findAssignment(simId: string): Assignment | undefined {
     return assignments.find((a) => a.simulationId === simId);
@@ -150,30 +152,52 @@
               Drop a card here to assign to {period.label || period.id}.
             </p>
           {:else}
-            {#each pending as sim (sim.id)}
-              {@const assignment = findAssignment(sim.id)}
-              <SimulationCard
-                {sim}
-                {models}
-                {hpcs}
-                hpcId={hpc.id}
-                periodId={period.id}
-                {assignment}
-                onAssignToPeriod={(targetHpcId, targetPeriodId) =>
-                  onAssignToPeriod(sim.id, targetHpcId, targetPeriodId)}
-                onUnassign={() => onUnassign(sim.id)}
-                onSplitChange={(split) => onSplitChange(sim.id, split)}
-                onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
-              />
-            {/each}
+            {#if pending.length > 0}
+              {@const plannedExpanded = showPlanned[period.id] ?? true}
+              <button
+                type="button"
+                class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                on:click={() => (showPlanned = { ...showPlanned, [period.id]: !plannedExpanded })}
+                data-testid="period-toggle-planned"
+                data-period-id={period.id}
+                aria-expanded={plannedExpanded}
+              >
+                <span>{plannedExpanded ? '▼' : '▶'} Planned</span>
+                <span class="text-slate-500">{pending.length}</span>
+              </button>
+              {#if plannedExpanded}
+                <div
+                  class="mt-2 space-y-2"
+                  data-testid="period-planned-section"
+                  data-period-id={period.id}
+                >
+                  {#each pending as sim (sim.id)}
+                    {@const assignment = findAssignment(sim.id)}
+                    <SimulationCard
+                      {sim}
+                      {models}
+                      {hpcs}
+                      hpcId={hpc.id}
+                      periodId={period.id}
+                      {assignment}
+                      onAssignToPeriod={(targetHpcId, targetPeriodId) =>
+                        onAssignToPeriod(sim.id, targetHpcId, targetPeriodId)}
+                      onUnassign={() => onUnassign(sim.id)}
+                      onSplitChange={(split) => onSplitChange(sim.id, split)}
+                      onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+                    />
+                  {/each}
+                </div>
+              {/if}
+            {/if}
 
             {#if done.length > 0}
-              {@const expanded = showDone[period.id] ?? true}
+              {@const expanded = showDone[period.id] ?? false}
               <div class="mt-2 border-t border-slate-200 pt-2">
                 <button
                   type="button"
                   class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-                  on:click={() => (showDone = { ...showDone, [period.id]: !expanded })}
+                  on:click={() => setPeriodDoneOpen(period.id, !expanded)}
                   data-testid="period-toggle-done"
                   data-period-id={period.id}
                   aria-expanded={expanded}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Hpc, Model, Simulation } from '$lib/types';
+  import { setTrayDoneOpen, uiPrefs } from '$lib/stores/ui-prefs';
   import EmptyState from './EmptyState.svelte';
   import SimulationCard from './SimulationCard.svelte';
 
@@ -11,7 +12,8 @@
   export let onCompletedChange: (simId: string, completed: boolean) => void;
 
   let dragOver = false;
-  let showDone = true;
+  let showPlanned = true;
+  $: showDone = $uiPrefs.trayDoneOpen;
 
   $: pendingSims = sims.filter((s) => !s.completed);
   $: doneSims = sims.filter((s) => s.completed);
@@ -66,26 +68,41 @@
       <EmptyState title="All sims assigned" message="Drop a card here to unassign it." />
     </div>
   {:else}
-    <div
-      class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-    >
-      {#each pendingSims as sim (sim.id)}
-        <SimulationCard
-          {sim}
-          {models}
-          {hpcs}
-          onAssignToPeriod={(hpcId, periodId) => onAssignToPeriod(sim.id, hpcId, periodId)}
-          onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
-        />
-      {/each}
-    </div>
+    {#if pendingSims.length > 0}
+      <button
+        type="button"
+        class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
+        on:click={() => (showPlanned = !showPlanned)}
+        data-testid="tray-toggle-planned"
+        aria-expanded={showPlanned}
+      >
+        <span>{showPlanned ? '▼' : '▶'} Planned</span>
+        <span class="text-slate-500">{pendingSims.length}</span>
+      </button>
+      {#if showPlanned}
+        <div
+          class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+          data-testid="tray-planned-section"
+        >
+          {#each pendingSims as sim (sim.id)}
+            <SimulationCard
+              {sim}
+              {models}
+              {hpcs}
+              onAssignToPeriod={(hpcId, periodId) => onAssignToPeriod(sim.id, hpcId, periodId)}
+              onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+            />
+          {/each}
+        </div>
+      {/if}
+    {/if}
 
     {#if doneSims.length > 0}
       <div class="mt-3 border-t border-slate-300 pt-2">
         <button
           type="button"
           class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-200"
-          on:click={() => (showDone = !showDone)}
+          on:click={() => setTrayDoneOpen(!showDone)}
           data-testid="tray-toggle-done"
           aria-expanded={showDone}
         >

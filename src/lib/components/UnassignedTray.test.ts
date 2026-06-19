@@ -72,7 +72,9 @@ describe('UnassignedTray', () => {
     const toggle = getByTestId('tray-toggle-done');
     expect(toggle.textContent).toMatch(/Done/);
     expect(toggle.textContent).toMatch(/2/);
-    // Expanded by default
+    // Collapsed by default — opening it reveals the section.
+    expect(queryByTestId('tray-done-section')).toBeNull();
+    await fireEvent.click(toggle);
     expect(getByTestId('tray-done-section')).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="tray-done-section"] [data-testid="simulation-card"]').length).toBe(2);
 
