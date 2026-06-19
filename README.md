@@ -38,6 +38,10 @@ Mark historical / already-running work as `locked` with a pinned HPC so it is in
 
 The `build/` output is fully static; deploy to any static host — GitHub Pages, Netlify, Cloudflare Pages, an internal S3 bucket. No env vars, no secrets, no runtime config.
 
+### GitHub Pages
+
+This repo includes `.github/workflows/deploy-pages.yml`, which checks, tests, builds, and deploys the static `build/` output on every push to `main`. In GitHub, set **Settings → Pages → Build and deployment → Source** to **GitHub Actions**. For the current repository name, the project site will be served below `/hpc_resource_planner/`; the SvelteKit base path is applied automatically during GitHub Actions builds.
+
 ## Scripts
 
 | script | what it does |
