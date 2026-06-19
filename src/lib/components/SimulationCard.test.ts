@@ -176,7 +176,7 @@ describe('SimulationCard', () => {
     expect(getByTestId('card-split').textContent).toMatch(/100%/);
   });
 
-  it('renders this sims budget share of the assigned HPC', () => {
+  it('renders absolute and percent resource usage for the assigned HPC', () => {
     const assignment: Assignment = {
       simulationId: 's1',
       hpcId: 'h1',
@@ -192,9 +192,93 @@ describe('SimulationCard', () => {
       }
     });
 
-    expect(getByTestId('card-compute-share').textContent).toContain(
-      'Compute CPU 10% / GPU 10%'
-    );
-    expect(getByTestId('card-storage-share').textContent).toContain('Storage 6%');
+    // 1 sim-month * 10 cpu-h/month * 1 overhead = 120 H
+    expect(getByTestId('card-cpu-share').textContent).toContain('CPU: 120 H');
+    expect(getByTestId('card-cpu-share').textContent).toContain('(10%)');
+    // 1 * 12 * 1 = 12 GPU h
+    expect(getByTestId('card-gpu-share').textContent).toContain('GPU: 12 H');
+    // 1 sim-month * 0.5 TB/sim-month * 12 = 6 TB
+    expect(getByTestId('card-storage-share').textContent).toContain('Storage: 6 TB');
+    expect(getByTestId('card-storage-share').textContent).toContain('(6%)');
+  });
+
+  it('hides the CPU and GPU spans when the sim has zero compute', () => {
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 1 }
+    };
+    const { queryByTestId, getByTestId } = render(SimulationCard, {
+      props: {
+        sim: sim({ zeroCompute: true }),
+        models,
+        hpcs,
+        hpcId: 'h1',
+        assignment
+      }
+    });
+
+    expect(queryByTestId('card-cpu-share')).toBeNull();
+    expect(queryByTestId('card-gpu-share')).toBeNull();
+    expect(getByTestId('card-storage-share').textContent).toContain('Storage');
+  });
+
+  it('renders the compact split inline with the meta line', () => {
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 1 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment }
+    });
+    const split = getByTestId('card-split');
+    expect(split.textContent).toMatch(/2026/);
+    expect(split.textContent).toMatch(/100%/);
+  });
+
+  it('toggles the completed flag through the inline checkbox', async () => {
+    const onCompletedChange = vi.fn();
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim(), models, hpcs, onCompletedChange }
+    });
+    await fireEvent.click(getByTestId('card-completed'));
+    expect(onCompletedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('sets a draggable attribute and writes the sim id on dragstart', () => {
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim(), models, hpcs }
+    });
+    const card = getByTestId('simulation-card');
+    expect(card.getAttribute('draggable')).toBe('true');
+
+    const data: Record<string, string> = {};
+    const e = new Event('dragstart') as DragEvent;
+    Object.defineProperty(e, 'dataTransfer', {
+      value: {
+        setData: (k: string, v: string) => {
+          data[k] = v;
+        },
+        effectAllowed: ''
+      }
+    });
+    card.dispatchEvent(e);
+    expect(data['text/plain']).toBe('s1');
+    expect(data['application/x-sim-id']).toBe('s1');
+  });
+
+  it('does not let locked sims be dragged', () => {
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim({ locked: true }), models, hpcs }
+    });
+    expect(getByTestId('simulation-card').getAttribute('draggable')).toBe('false');
+  });
+
+  it('does not let completed sims be dragged', () => {
+    const { getByTestId } = render(SimulationCard, {
+      props: { sim: sim({ completed: true }), models, hpcs }
+    });
+    expect(getByTestId('simulation-card').getAttribute('draggable')).toBe('false');
   });
 });

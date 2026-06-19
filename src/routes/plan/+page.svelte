@@ -1,10 +1,7 @@
 <script lang="ts">
-  // NOTE: The plan in docs/plans/20260618-hpc-resource-planner.md originally
-  // called for drag-and-drop via `svelte-dnd-action`. That library only
-  // documents Svelte 3/4 support and the wider ecosystem hasn't settled on a
-  // Svelte 5 story for it yet, so per the task's explicit fallback we use a
-  // click-driven menus instead. Functionality — assigning, unassigning,
-  // moving, period split editing — is preserved.
+  // Drag-and-drop uses the native HTML5 DnD API (Svelte 5 has no settled
+  // svelte-dnd-action story yet). The action menus on each card remain the
+  // accessible fallback for assign / unassign / move / split-edit.
   import EmptyState from '$lib/components/EmptyState.svelte';
   import HpcLane from '$lib/components/HpcLane.svelte';
   import UnassignedTray from '$lib/components/UnassignedTray.svelte';
@@ -23,6 +20,11 @@
 
   function assign(simId: string, hpcId: string) {
     appState.update((s) => {
+      const sim = s.simulations.find((x) => x.id === simId);
+      // Locked sims can only land on their pinned HPC (drag onto any other
+      // lane is a no-op so the user isn't surprised).
+      if (sim?.locked && sim.pinnedHpcId && sim.pinnedHpcId !== hpcId) return s;
+
       const without = s.assignments.filter((a) => a.simulationId !== simId);
       const hpc = s.hpcs.find((h) => h.id === hpcId);
       const firstPeriod = hpc?.periods[0]?.id;
@@ -37,10 +39,14 @@
   }
 
   function unassign(simId: string) {
-    appState.update((s) => ({
-      ...s,
-      assignments: s.assignments.filter((a) => a.simulationId !== simId)
-    }));
+    appState.update((s) => {
+      const sim = s.simulations.find((x) => x.id === simId);
+      if (sim?.locked) return s;
+      return {
+        ...s,
+        assignments: s.assignments.filter((a) => a.simulationId !== simId)
+      };
+    });
   }
 
   function setSplit(simId: string, split: Record<string, number>) {
@@ -51,14 +57,24 @@
       )
     }));
   }
+
+  function setCompleted(simId: string, completed: boolean) {
+    appState.update((s) => ({
+      ...s,
+      simulations: s.simulations.map((sim) =>
+        sim.id === simId ? { ...sim, completed } : sim
+      )
+    }));
+  }
 </script>
 
 <div class="space-y-4">
   <header>
     <h1 class="text-2xl font-bold">Plan</h1>
     <p class="text-sm text-slate-600">
-      Assign simulations to HPCs and split each assignment across periods. The
-      budget meters update live.
+      Assign simulations to HPCs and split each assignment across periods. Drag
+      cards between lanes or use each card's action menu. The budget meters
+      update live.
     </p>
   </header>
 
@@ -83,6 +99,8 @@
         models={$modelsStore}
         hpcs={$hpcsStore}
         onAssign={assign}
+        onUnassign={unassign}
+        onCompletedChange={setCompleted}
       />
       {#each $hpcsStore as hpc (hpc.id)}
         <HpcLane
@@ -95,6 +113,7 @@
           onAssign={assign}
           onUnassign={unassign}
           onSplitChange={setSplit}
+          onCompletedChange={setCompleted}
         />
       {/each}
     </div>

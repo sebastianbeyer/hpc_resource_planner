@@ -14,12 +14,19 @@
    * falls back to the simple completed/active two-segment rendering.
    */
   export let segments: MeterSegment[] = [];
+  /**
+   * Optional formatter producing a complete display string (e.g. "1.2 MH").
+   * When set, callers don't need to interpret `unit` — it's only used as a
+   * fallback when no formatter is provided.
+   */
+  export let formatValue: ((n: number) => string) | undefined = undefined;
 
   $: hasBudget = budget > 0;
   $: percent = hasBudget ? (used / budget) * 100 : 0;
   $: overBudget = hasBudget && used > budget;
   $: barWidth = hasBudget ? Math.min(percent, 100) : 0;
   $: completedClamped = Math.max(0, Math.min(completed, used));
+  $: completedPercent = hasBudget ? (completedClamped / budget) * 100 : 0;
   $: completedWidth = hasBudget
     ? Math.min((completedClamped / budget) * 100, barWidth)
     : 0;
@@ -29,9 +36,12 @@
   const intFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   const floatFmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 
-  function fmt(n: number): string {
-    return Math.abs(n) >= 100 ? intFmt.format(n) : floatFmt.format(n);
+  function defaultFmt(n: number): string {
+    const s = Math.abs(n) >= 100 ? intFmt.format(n) : floatFmt.format(n);
+    return `${s} ${unit}`;
   }
+
+  $: fmtValue = formatValue ?? defaultFmt;
 </script>
 
 <div
@@ -65,7 +75,7 @@
         <div
           class="h-full {modelColor(seg.modelId, seg.completed)} transition-all"
           style="width: {(seg.value / budget) * 100}%"
-          title={`${seg.simulationName} — ${fmt(seg.value)} ${unit} (${seg.modelName})${seg.completed ? ' · completed' : ''}`}
+          title={`${seg.simulationName} — ${fmtValue(seg.value)} (${seg.modelName})${seg.completed ? ' · completed' : ''}`}
           data-testid="meter-segment"
           data-sim-id={seg.simulationId}
           data-model-id={seg.modelId}
@@ -80,10 +90,10 @@
       class:text-slate-700={!overBudget}
       data-testid="meter-numeric"
     >
-      {fmt(used)} / {fmt(budget)} {unit} ({percent.toFixed(0)}%)
+      {fmtValue(used)} / {fmtValue(budget)} ({percent.toFixed(0)}%)
       {#if completedClamped > 0}
         <span class="ml-1 text-slate-500" data-testid="completed-used">
-          {fmt(completedClamped)} {unit} completed
+          {fmtValue(completedClamped)} used ({completedPercent.toFixed(0)}%)
         </span>
       {/if}
       {#if overBudget}
@@ -114,10 +124,10 @@
       class:text-slate-700={!overBudget}
       data-testid="meter-numeric"
     >
-      {fmt(used)} / {fmt(budget)} {unit} ({percent.toFixed(0)}%)
+      {fmtValue(used)} / {fmtValue(budget)} ({percent.toFixed(0)}%)
       {#if completedClamped > 0}
         <span class="ml-1 text-slate-500" data-testid="completed-used">
-          {fmt(completedClamped)} {unit} completed
+          {fmtValue(completedClamped)} used ({completedPercent.toFixed(0)}%)
         </span>
       {/if}
       {#if overBudget}

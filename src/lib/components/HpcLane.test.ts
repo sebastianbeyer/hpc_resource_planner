@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { fireEvent, render } from '@testing-library/svelte';
 import HpcLane from './HpcLane.svelte';
 import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
 import type { HpcRollup } from '$lib/calc/rollup';
@@ -83,7 +83,8 @@ describe('HpcLane', () => {
         rollup,
         onAssign: vi.fn(),
         onUnassign: vi.fn(),
-        onSplitChange: vi.fn()
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
       }
     });
     expect(container.textContent).toMatch(/Levante/);
@@ -100,7 +101,8 @@ describe('HpcLane', () => {
         rollup,
         onAssign: vi.fn(),
         onUnassign: vi.fn(),
-        onSplitChange: vi.fn()
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
       }
     });
     // 2 periods × 2 (CPU + GPU) + 1 storage = 5 meters
@@ -118,7 +120,8 @@ describe('HpcLane', () => {
         rollup,
         onAssign: vi.fn(),
         onUnassign: vi.fn(),
-        onSplitChange: vi.fn()
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
       }
     });
     expect(getAllByTestId('simulation-card').length).toBe(1);
@@ -135,9 +138,82 @@ describe('HpcLane', () => {
         rollup,
         onAssign: vi.fn(),
         onUnassign: vi.fn(),
-        onSplitChange: vi.fn()
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
       }
     });
     expect(getByTestId('lane-empty').textContent).toMatch(/No sims/);
+  });
+
+  it('separates completed assigned sims into a collapsable Done section', async () => {
+    const mixed: Simulation[] = [
+      { ...sims[0], id: 's1', name: 'pending' },
+      {
+        id: 's2',
+        name: 'done',
+        modelId: 'm1',
+        resolution: 'tco79',
+        lengthYears: 1,
+        ensembles: 1,
+        dataPortfolio: 'standard',
+        overheadMultiplier: 1.15,
+        locked: false,
+        completed: true
+      }
+    ];
+    const { getByTestId, queryByTestId, container } = render(HpcLane, {
+      props: {
+        hpc,
+        sims: mixed,
+        models,
+        hpcs: [hpc],
+        assignments: [
+          { simulationId: 's1', hpcId: 'h1', periodSplit: { p1: 1 } },
+          { simulationId: 's2', hpcId: 'h1', periodSplit: { p1: 1 } }
+        ],
+        rollup,
+        onAssign: vi.fn(),
+        onUnassign: vi.fn(),
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
+      }
+    });
+    const toggle = getByTestId('lane-toggle-done');
+    expect(toggle.textContent).toMatch(/Done/);
+    expect(toggle.textContent).toMatch(/1/);
+    expect(container.querySelectorAll('[data-testid="lane-done-section"] [data-testid="simulation-card"]').length).toBe(1);
+    await fireEvent.click(toggle);
+    expect(queryByTestId('lane-done-section')).toBeNull();
+  });
+
+  it('fires onAssign when a sim id is dropped on the lane', () => {
+    const onAssign = vi.fn();
+    const { getByTestId } = render(HpcLane, {
+      props: {
+        hpc,
+        sims: [],
+        models,
+        hpcs: [hpc],
+        assignments: [],
+        rollup,
+        onAssign,
+        onUnassign: vi.fn(),
+        onSplitChange: vi.fn(),
+        onCompletedChange: vi.fn()
+      }
+    });
+    const lane = getByTestId('hpc-lane');
+    const data: Record<string, string> = {
+      'application/x-sim-id': 's1',
+      'text/plain': 's1'
+    };
+    const dt = {
+      getData: (k: string) => data[k] ?? '',
+      dropEffect: ''
+    };
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: dt });
+    lane.dispatchEvent(drop);
+    expect(onAssign).toHaveBeenCalledWith('s1', 'h1');
   });
 });
