@@ -22,7 +22,7 @@ SvelteKit static SPA. Svelte 5, TypeScript, Tailwind. Built with `@sveltejs/adap
 ## Calculation layer
 
 - `src/lib/calc/cost.ts`, `allocate.ts`, `rollup.ts` — pure functions, no DOM, no stores. This is the trickiest logic in the app and is fully unit-tested. If you change the resource math, update the tests in the same files (`*.test.ts`).
-- Rule of thumb: overhead multiplier applies to compute only; storage accumulates per HPC across all periods.
+- Rule of thumb: overhead multiplier applies to compute only; storage rates are model/resolution/data-portfolio values, not HPC-specific, and storage accumulates per HPC across all periods. Completed simulations still count as used resources, but rollups track their completed portion separately so meters can render it grey.
 
 ## Cascade-delete
 
