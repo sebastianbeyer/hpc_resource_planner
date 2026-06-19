@@ -49,7 +49,7 @@ SvelteKit static SPA. Svelte 5, TypeScript, Tailwind. Built with `@sveltejs/adap
 
 ## Plan tab specifics
 
-Uses click-driven assignment menus, not `svelte-dnd-action` (Svelte 5 compatibility — see the header comment in `src/routes/plan/+page.svelte`). Locked sims don't expose the assign/unassign/move controls but still expose "Edit split".
+Uses click-driven assignment menus, not `svelte-dnd-action` (Svelte 5 compatibility — see the header comment in `src/routes/plan/+page.svelte`). Completed sims aren't draggable and are bucketed into a collapsable "Done" section under each lane, but they keep the full action menu.
 
 ## Schema migrations
 

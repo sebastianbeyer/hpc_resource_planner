@@ -24,8 +24,8 @@
   $: hpc = hpcId ? hpcs.find((h) => h.id === hpcId) : undefined;
   $: periods = hpc?.periods ?? [];
   $: moveTargets = hpcId ? hpcs.filter((h) => h.id !== hpcId) : [];
-  $: hasPlanActions = hpcId !== undefined && (assignment !== undefined || !sim.locked);
-  $: draggable = !sim.locked && !sim.completed;
+  $: hasPlanActions = hpcId !== undefined && assignment !== undefined;
+  $: draggable = !sim.completed;
 
   const percentFmt = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 1,
@@ -128,7 +128,6 @@
   on:dragstart={onDragStart}
   data-testid="simulation-card"
   data-sim-id={sim.id}
-  data-locked={sim.locked ? 'true' : 'false'}
 >
   <header class="flex items-start justify-between gap-2">
     <div class="min-w-0 flex-1">
@@ -136,15 +135,6 @@
         <span class="truncate text-sm font-semibold text-slate-900">
           {sim.name || '(unnamed)'}
         </span>
-        {#if sim.locked}
-          <span
-            class="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800"
-            data-testid="lock-icon"
-            title="Locked simulation"
-          >
-            🔒 LOCKED
-          </span>
-        {/if}
         {#if sim.packageLabel}
           <span
             class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700"
@@ -251,40 +241,38 @@
                   </button>
                 </li>
               {/if}
-              {#if !sim.locked}
-                <li role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="block w-full rounded px-2 py-1 text-left text-[11px] text-red-700 hover:bg-red-50"
-                    on:click={unassignFromMenu}
-                    data-testid="unassign"
-                  >
-                    Unassign
-                  </button>
+              <li role="none">
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="block w-full rounded px-2 py-1 text-left text-[11px] text-red-700 hover:bg-red-50"
+                  on:click={unassignFromMenu}
+                  data-testid="unassign"
+                >
+                  Unassign
+                </button>
+              </li>
+              {#if moveTargets.length > 0}
+                <li
+                  class="mt-1 border-t border-slate-200 px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
+                  role="none"
+                >
+                  Move to
                 </li>
-                {#if moveTargets.length > 0}
-                  <li
-                    class="mt-1 border-t border-slate-200 px-2 pb-0.5 pt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500"
-                    role="none"
-                  >
-                    Move to
+                {#each moveTargets as h (h.id)}
+                  <li role="none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
+                      on:click={() => moveFromMenu(h.id)}
+                      data-testid="move-to-option"
+                      data-target-hpc-id={h.id}
+                    >
+                      {h.name || h.id}
+                    </button>
                   </li>
-                  {#each moveTargets as h (h.id)}
-                    <li role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
-                        on:click={() => moveFromMenu(h.id)}
-                        data-testid="move-to-option"
-                        data-target-hpc-id={h.id}
-                      >
-                        {h.name || h.id}
-                      </button>
-                    </li>
-                  {/each}
-                {/if}
+                {/each}
               {/if}
             </ul>
           {/if}

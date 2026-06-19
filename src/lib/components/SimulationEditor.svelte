@@ -39,9 +39,6 @@
   $: resolutionOptions =
     modelResolutions.length > 0 ? modelResolutions : resolutions;
 
-  // Validation: locked sims require a pinned HPC.
-  $: lockedWithoutPin = sim.locked && !sim.pinnedHpcId;
-
   $: if (!packageLabelFocused && packageLabelDraft !== (sim.packageLabel ?? '')) {
     packageLabelDraft = sim.packageLabel ?? '';
   }
@@ -57,20 +54,6 @@
     }
     return missing;
   })();
-
-  function onLockedChange(e: Event) {
-    const checked = (e.currentTarget as HTMLInputElement).checked;
-    if (checked) {
-      // Pre-fill pinnedHpcId with the first HPC if available.
-      const pinned = sim.pinnedHpcId ?? hpcs[0]?.id;
-      onChange({ ...sim, locked: true, pinnedHpcId: pinned });
-    } else {
-      // Clear pinnedHpcId when unlocking.
-      const next: Simulation = { ...sim, locked: false };
-      delete next.pinnedHpcId;
-      onChange(next);
-    }
-  }
 
   function onZeroComputeChange(e: Event) {
     const checked = (e.currentTarget as HTMLInputElement).checked;
@@ -246,33 +229,6 @@
     <label class="flex items-center gap-2 text-xs font-medium text-slate-700">
       <input
         type="checkbox"
-        checked={sim.locked}
-        on:change={onLockedChange}
-        data-testid="sim-locked"
-      />
-      Locked (pin to a specific HPC)
-    </label>
-
-    {#if sim.locked}
-      <label class="flex flex-col text-xs font-medium text-slate-600">
-        Pinned HPC
-        <select
-          class="mt-1 w-44 rounded border border-slate-300 px-2 py-1 text-sm text-slate-900"
-          value={sim.pinnedHpcId ?? ''}
-          on:change={(e) => emit({ pinnedHpcId: e.currentTarget.value })}
-          data-testid="sim-pinned"
-        >
-          <option value="">— pick HPC —</option>
-          {#each hpcs as h (h.id)}
-            <option value={h.id}>{h.name || h.id}</option>
-          {/each}
-        </select>
-      </label>
-    {/if}
-
-    <label class="flex items-center gap-2 text-xs font-medium text-slate-700">
-      <input
-        type="checkbox"
         checked={sim.zeroCompute === true}
         on:change={onZeroComputeChange}
         data-testid="sim-zero-compute"
@@ -290,12 +246,6 @@
       Completed
     </label>
   </div>
-
-  {#if lockedWithoutPin}
-    <p class="mt-2 text-xs text-red-600" data-testid="warn-locked-no-pin">
-      Locked simulations must pin an HPC.
-    </p>
-  {/if}
 
   {#if missingCostHpcs.length > 0 && sim.resolution}
     <p class="mt-2 text-xs text-red-600" data-testid="warn-missing-cost">

@@ -5,7 +5,7 @@ import type { AppState } from '$lib/types';
 
 function makeFullState(): AppState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     hpcs: [
       {
         id: 'hpc-1',
@@ -44,7 +44,6 @@ function makeFullState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false,
         completed: false
       }
     ],
@@ -117,10 +116,10 @@ describe('importState error handling', () => {
 });
 
 describe('importState migration', () => {
-  it('accepts payload with schemaVersion: 3 (current)', () => {
-    const s = { ...defaultState(), schemaVersion: 3 };
+  it('accepts payload with schemaVersion: 4 (current)', () => {
+    const s = { ...defaultState(), schemaVersion: 4 };
     const out = importState(JSON.stringify(s));
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(4);
   });
 
   it('migrates payload with schemaVersion: 1', () => {
@@ -134,13 +133,13 @@ describe('importState migration', () => {
       resolutions: []
     };
     const out = importState(JSON.stringify(s));
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(4);
   });
 
   it('treats missing schemaVersion as v1 and succeeds via migrate', () => {
     const s = defaultState() as Partial<AppState>;
     delete (s as Record<string, unknown>).schemaVersion;
     const out = importState(JSON.stringify(s));
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(4);
   });
 });

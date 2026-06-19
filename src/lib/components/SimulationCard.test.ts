@@ -48,7 +48,6 @@ function sim(overrides: Partial<Simulation> = {}): Simulation {
     ensembles: 1,
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
-    locked: false,
     completed: false,
     ...overrides
   };
@@ -61,13 +60,6 @@ describe('SimulationCard', () => {
     });
     expect(container.textContent).toMatch(/Test sim/);
     expect(container.textContent).toMatch(/IFS/);
-  });
-
-  it('renders a lock icon when sim.locked is true', () => {
-    const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim({ locked: true }), models, hpcs }
-    });
-    expect(getByTestId('lock-icon')).toBeTruthy();
   });
 
   it('renders the package label as a badge when set', () => {
@@ -89,7 +81,7 @@ describe('SimulationCard', () => {
     expect(onAssign).toHaveBeenCalledWith('h1');
   });
 
-  it('in an HPC lane, shows Unassign for non-locked sims and fires onUnassign', async () => {
+  it('in an HPC lane, shows Unassign and fires onUnassign', async () => {
     const onUnassign = vi.fn();
     const assignment: Assignment = {
       simulationId: 's1',
@@ -142,25 +134,6 @@ describe('SimulationCard', () => {
     await fireEvent.click(getByTestId('move-to-option'));
 
     expect(onAssign).toHaveBeenCalledWith('h2');
-  });
-
-  it('in an HPC lane, hides Unassign for locked sims', async () => {
-    const assignment: Assignment = {
-      simulationId: 's1',
-      hpcId: 'h1',
-      periodSplit: { p1: 1 }
-    };
-    const { queryByTestId } = render(SimulationCard, {
-      props: {
-        sim: sim({ locked: true }),
-        models,
-        hpcs,
-        hpcId: 'h1',
-        assignment
-      }
-    });
-    await fireEvent.click(queryByTestId('card-actions')!);
-    expect(queryByTestId('unassign')).toBeNull();
   });
 
   it('renders a compact split string for the assignment', () => {
@@ -266,13 +239,6 @@ describe('SimulationCard', () => {
     card.dispatchEvent(e);
     expect(data['text/plain']).toBe('s1');
     expect(data['application/x-sim-id']).toBe('s1');
-  });
-
-  it('does not let locked sims be dragged', () => {
-    const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim({ locked: true }), models, hpcs }
-    });
-    expect(getByTestId('simulation-card').getAttribute('draggable')).toBe('false');
   });
 
   it('does not let completed sims be dragged', () => {

@@ -29,7 +29,6 @@
     let hpcName = 'untitled';
     let impact = {
       assignmentCount: 0,
-      lockedSimCount: 0,
       computeCostColumnCount: 0
     };
     appState.update((s) => {
@@ -45,11 +44,6 @@
         `${impact.assignmentCount} assignment${impact.assignmentCount === 1 ? '' : 's'}`
       );
     }
-    if (impact.lockedSimCount > 0) {
-      refParts.push(
-        `${impact.lockedSimCount} locked simulation${impact.lockedSimCount === 1 ? '' : 's'}`
-      );
-    }
     if (impact.computeCostColumnCount > 0) {
       refParts.push(
         `${impact.computeCostColumnCount} compute cost entr${impact.computeCostColumnCount === 1 ? 'y' : 'ies'}`
@@ -59,7 +53,7 @@
     const prompt =
       refParts.length === 0
         ? `Delete HPC "${hpcName}"?`
-        : `"${hpcName}" has ${refParts.join(', ')} referencing it. They will be unassigned/unpinned and the compute cost entries removed. Delete anyway?`;
+        : `"${hpcName}" has ${refParts.join(', ')} referencing it. The assignments will be removed along with the compute cost entries. Delete anyway?`;
 
     if (!window.confirm(prompt)) return;
     appState.update((s) => cascadeDeleteHpc(s, id));

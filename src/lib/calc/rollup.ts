@@ -1,4 +1,4 @@
-import type { AppState, Assignment } from '../types';
+import type { AppState } from '../types';
 import { simulationCost } from './cost';
 import { allocateAcrossPeriods } from './allocate';
 
@@ -52,10 +52,6 @@ export type Rollup = Record<string, HpcRollup>;
  *
  * Special cases (per plan):
  *   - Storage is wholesale per HPC; it is NOT period-scoped.
- *   - A locked sim with a `pinnedHpcId` but no explicit `Assignment` is
- *     treated as implicitly assigned: 100% on the HPC's first period (or
- *     `{}` if the HPC has no periods, in which case all compute is dropped
- *     but storage still lands on the pinned HPC).
  *   - Periods named in `periodSplit` that don't exist on the target HPC are
  *     silently ignored at the calc layer. The data is stale (e.g. user
  *     renamed a period); surfacing that is the UI's job.
@@ -66,10 +62,6 @@ export function rollup(state: AppState): Rollup {
   const out: Rollup = {};
   const simsById = new Map(state.simulations.map((s) => [s.id, s]));
   const modelsById = new Map(state.models.map((m) => [m.id, m]));
-  const hpcsById = new Map(state.hpcs.map((h) => [h.id, h]));
-  const explicitlyAssignedSimIds = new Set(
-    state.assignments.map((a) => a.simulationId)
-  );
 
   // Initialise the per-HPC structure with zero-used and the real budgets.
   for (const hpc of state.hpcs) {
@@ -98,29 +90,7 @@ export function rollup(state: AppState): Rollup {
     };
   }
 
-  // Collect the assignments we need to apply: explicit ones + synthesised
-  // ones for locked-and-pinned sims that lack an explicit assignment.
-  const effectiveAssignments: Assignment[] = [...state.assignments];
-  for (const sim of state.simulations) {
-    if (
-      sim.locked &&
-      sim.pinnedHpcId &&
-      !explicitlyAssignedSimIds.has(sim.id)
-    ) {
-      const hpc = hpcsById.get(sim.pinnedHpcId);
-      // Synthesise even if the HPC is missing — we'll skip below.
-      const firstPeriodId = hpc?.periods[0]?.id;
-      const periodSplit: Record<string, number> =
-        firstPeriodId !== undefined ? { [firstPeriodId]: 1 } : {};
-      effectiveAssignments.push({
-        simulationId: sim.id,
-        hpcId: sim.pinnedHpcId,
-        periodSplit
-      });
-    }
-  }
-
-  for (const assignment of effectiveAssignments) {
+  for (const assignment of state.assignments) {
     const sim = simsById.get(assignment.simulationId);
     if (!sim) continue;
     const hpcBucket = out[assignment.hpcId];

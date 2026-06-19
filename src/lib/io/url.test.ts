@@ -12,7 +12,7 @@ import type { AppState } from '$lib/types';
 
 function makeFullState(): AppState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     hpcs: [
       {
         id: 'hpc-1',
@@ -41,7 +41,6 @@ function makeFullState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false,
         completed: false
       }
     ],
@@ -134,7 +133,7 @@ describe('decodeStateFromParam error handling', () => {
     };
     const token = await encodeStateToParam(v1 as unknown as AppState);
     const out = await decodeStateFromParam(token);
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(4);
   });
 });
 

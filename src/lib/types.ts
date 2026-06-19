@@ -36,9 +36,7 @@ export type Simulation = {
   dataPortfolio: string;          // key into Model.storageTbPerSimMonthByResolution
   packageLabel?: string;          // visual grouping only
   overheadMultiplier: number;     // e.g. 1.15 = +15% for reruns
-  locked: boolean;
   completed: boolean;             // already completed; rendered as consumed in meters
-  pinnedHpcId?: string;           // required when locked
   zeroCompute?: boolean;          // for historical/already-done data
 };
 

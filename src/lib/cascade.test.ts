@@ -67,21 +67,18 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
-        locked: false,
         completed: false
       },
       {
         id: 'sim-2',
-        name: 'Sim 2 (locked@A)',
+        name: 'Sim 2 (on A)',
         modelId: 'model-1',
         resolution: 'tco79',
         lengthYears: 1,
         ensembles: 1,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
-        locked: true,
-        completed: false,
-        pinnedHpcId: 'hpc-a'
+        completed: false
       },
       {
         id: 'sim-3',
@@ -92,7 +89,6 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
-        locked: false,
         completed: false
       }
     ],
@@ -112,10 +108,9 @@ function buildState(): AppState {
 }
 
 describe('describeHpcDelete', () => {
-  it('counts assignments, locked-pinned sims, and cost columns', () => {
+  it('counts assignments and cost columns', () => {
     const impact = describeHpcDelete(buildState(), 'hpc-a');
     expect(impact.assignmentCount).toBe(1);
-    expect(impact.lockedSimCount).toBe(1);
     // hpc-a appears under both tco79 and tco399, so 2 cost columns.
     expect(impact.computeCostColumnCount).toBe(2);
   });
@@ -124,7 +119,6 @@ describe('describeHpcDelete', () => {
     const impact = describeHpcDelete(defaultState(), 'nonexistent');
     expect(impact).toEqual({
       assignmentCount: 0,
-      lockedSimCount: 0,
       computeCostColumnCount: 0
     });
   });
@@ -139,13 +133,6 @@ describe('cascadeDeleteHpc', () => {
   it('strips assignments that reference the deleted HPC', () => {
     const next = cascadeDeleteHpc(buildState(), 'hpc-a');
     expect(next.assignments.map((a) => a.simulationId)).toEqual(['sim-3']);
-  });
-
-  it('unpins and unlocks sims that were pinned to the deleted HPC', () => {
-    const next = cascadeDeleteHpc(buildState(), 'hpc-a');
-    const sim2 = next.simulations.find((s) => s.id === 'sim-2')!;
-    expect(sim2.locked).toBe(false);
-    expect(sim2.pinnedHpcId).toBeUndefined();
   });
 
   it('drops the HPC column from every model compute-cost row', () => {

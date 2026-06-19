@@ -25,7 +25,6 @@ function sim(overrides: Partial<Simulation> = {}): Simulation {
     ensembles: 1,
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
-    locked: false,
     completed: false,
     ...overrides
   };

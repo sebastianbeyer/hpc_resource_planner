@@ -17,7 +17,7 @@ The app has four tabs which feed into each other in order:
 
 1. **HPCs** — define each HPC and its budget periods (CPU/GPU hours per period, one cumulative storage budget per HPC).
 2. **Models** — define each model's CPU/GPU cost per (resolution × HPC) and its storage rate per (resolution × data portfolio).
-3. **Simulations** — define each simulation: model, resolution, length (years), ensembles, data portfolio, overhead multiplier, optional package label, and `locked` / `completed` / `zeroCompute` flags.
+3. **Simulations** — define each simulation: model, resolution, length (years), ensembles, data portfolio, overhead multiplier, optional package label, and `completed` / `zeroCompute` flags.
 4. **Plan** — assign simulations to HPCs, edit the per-period split for each assignment, and read off live budget meters with over-budget warnings.
 
 Import/Export of the whole state as JSON is available from a button in the tab bar; the JSON file is the single shareable artifact.
@@ -30,9 +30,9 @@ The full `AppState` shape (HPCs, models, simulations, assignments, shared vocabu
 
 For a simulation, `totalMonths = lengthYears * 12 * ensembles`. Compute usage is `costPerMonth * totalMonths * overheadMultiplier` (the overhead multiplier represents rerun cost, applied to compute only). Storage is `storagePerMonth(byResolutionAndPortfolio) * totalMonths` — no overhead and not HPC-specific — and is accumulated per HPC across all assigned simulations (not split per period). `zeroCompute` simulations contribute storage only. `completed` simulations still count against used resources, but their portion is rendered as grey in the budget meters.
 
-## Locked simulations
+## Historical / in-flight simulations
 
-Mark historical / already-running work as `locked` with a pinned HPC so it is included in the rollups but can't be reassigned by accident. Combine with `zeroCompute` for runs whose compute is already spent but whose data still occupies storage.
+Mark already-running or finished work with the `completed` flag so its consumption renders grey in the budget meters but still counts against the totals. Combine with `zeroCompute` for runs whose compute is already spent but whose data still occupies storage.
 
 ## Hosting
 

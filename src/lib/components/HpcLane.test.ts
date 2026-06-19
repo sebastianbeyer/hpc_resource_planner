@@ -62,7 +62,6 @@ const sims: Simulation[] = [
     ensembles: 1,
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
-    locked: false,
     completed: false
   }
 ];
@@ -157,7 +156,6 @@ describe('HpcLane', () => {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false,
         completed: true
       }
     ];

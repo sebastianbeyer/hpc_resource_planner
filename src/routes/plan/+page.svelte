@@ -20,11 +20,6 @@
 
   function assign(simId: string, hpcId: string) {
     appState.update((s) => {
-      const sim = s.simulations.find((x) => x.id === simId);
-      // Locked sims can only land on their pinned HPC (drag onto any other
-      // lane is a no-op so the user isn't surprised).
-      if (sim?.locked && sim.pinnedHpcId && sim.pinnedHpcId !== hpcId) return s;
-
       const without = s.assignments.filter((a) => a.simulationId !== simId);
       const hpc = s.hpcs.find((h) => h.id === hpcId);
       const firstPeriod = hpc?.periods[0]?.id;
@@ -39,14 +34,10 @@
   }
 
   function unassign(simId: string) {
-    appState.update((s) => {
-      const sim = s.simulations.find((x) => x.id === simId);
-      if (sim?.locked) return s;
-      return {
-        ...s,
-        assignments: s.assignments.filter((a) => a.simulationId !== simId)
-      };
-    });
+    appState.update((s) => ({
+      ...s,
+      assignments: s.assignments.filter((a) => a.simulationId !== simId)
+    }));
   }
 
   function setSplit(simId: string, split: Record<string, number>) {

@@ -8,7 +8,7 @@ import type {
   Simulation
 } from './types';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 /**
  * An empty-but-valid state with seeded shared vocabularies.
@@ -182,7 +182,6 @@ function validateSimulation(value: unknown, path: string): Simulation {
   if (overheadMultiplier < 0) {
     fail(`${path}.overheadMultiplier`, `expected non-negative number, got ${overheadMultiplier}`);
   }
-  const locked = ensureBoolean(o.locked, `${path}.locked`);
   const completed = ensureBoolean(o.completed, `${path}.completed`);
 
   const sim: Simulation = {
@@ -194,21 +193,14 @@ function validateSimulation(value: unknown, path: string): Simulation {
     ensembles,
     dataPortfolio,
     overheadMultiplier,
-    locked,
     completed
   };
 
   if (o.packageLabel !== undefined) {
     sim.packageLabel = ensureString(o.packageLabel, `${path}.packageLabel`);
   }
-  if (o.pinnedHpcId !== undefined) {
-    sim.pinnedHpcId = ensureString(o.pinnedHpcId, `${path}.pinnedHpcId`);
-  }
   if (o.zeroCompute !== undefined) {
     sim.zeroCompute = ensureBoolean(o.zeroCompute, `${path}.zeroCompute`);
-  }
-  if (locked && sim.pinnedHpcId === undefined) {
-    fail(`${path}.pinnedHpcId`, 'required when simulation is locked');
   }
 
   return sim;
@@ -307,6 +299,70 @@ function migrateV2toV3(state: Record<string, unknown>): Record<string, unknown> 
   };
 }
 
+function migrateV3toV4(state: Record<string, unknown>): Record<string, unknown> {
+  const rawAssignments = Array.isArray(state.assignments) ? state.assignments : [];
+  const explicitlyAssignedSimIds = new Set<string>();
+  for (const a of rawAssignments) {
+    if (isObject(a) && typeof a.simulationId === 'string') {
+      explicitlyAssignedSimIds.add(a.simulationId);
+    }
+  }
+
+  const hpcsById = new Map<string, Record<string, unknown>>();
+  if (Array.isArray(state.hpcs)) {
+    for (const h of state.hpcs) {
+      if (isObject(h) && typeof h.id === 'string') hpcsById.set(h.id, h);
+    }
+  }
+
+  const synthesised: Record<string, unknown>[] = [];
+  const simulations = Array.isArray(state.simulations)
+    ? state.simulations.map((simRaw) => {
+        if (!isObject(simRaw)) return simRaw;
+        const {
+          locked: rawLocked,
+          pinnedHpcId: rawPin,
+          completed: rawCompleted,
+          ...rest
+        } = simRaw;
+        const wasLocked = rawLocked === true;
+        const completed = rawCompleted === true || wasLocked;
+        const next = { ...rest, completed };
+
+        if (
+          wasLocked &&
+          typeof rawPin === 'string' &&
+          typeof simRaw.id === 'string' &&
+          !explicitlyAssignedSimIds.has(simRaw.id)
+        ) {
+          const hpc = hpcsById.get(rawPin);
+          const periods = isObject(hpc) && Array.isArray(hpc.periods) ? hpc.periods : [];
+          const firstPeriod = periods[0];
+          const firstPeriodId =
+            isObject(firstPeriod) && typeof firstPeriod.id === 'string'
+              ? firstPeriod.id
+              : undefined;
+          const periodSplit: Record<string, number> =
+            firstPeriodId !== undefined ? { [firstPeriodId]: 1 } : {};
+          synthesised.push({
+            simulationId: simRaw.id,
+            hpcId: rawPin,
+            periodSplit
+          });
+        }
+
+        return next;
+      })
+    : state.simulations;
+
+  return {
+    ...state,
+    schemaVersion: 4,
+    simulations,
+    assignments: [...rawAssignments, ...synthesised]
+  };
+}
+
 // ---------- top-level ----------
 
 /**
@@ -368,7 +424,10 @@ export function validateState(input: unknown): AppState {
  * Migrate an unknown state blob to the current schema version, then validate.
  * v1 stored data-portfolio storage rates inside each HPC-specific compute
  * cell; v2 stores them once per model resolution because storage is
- * HPC-independent. v3 adds the per-simulation completed flag.
+ * HPC-independent. v3 adds the per-simulation completed flag. v4 drops the
+ * locked/pinnedHpcId fields — previously-locked sims are marked completed and
+ * (if pinned) get a synthesised explicit Assignment on the pinned HPC's first
+ * period, matching the rollup synthesis the locked flag used to enable.
  */
 export function migrate(state: unknown): AppState {
   // If schemaVersion is missing entirely, assume v1.
@@ -400,6 +459,9 @@ export function migrate(state: unknown): AppState {
         break;
       case 2:
         current = migrateV2toV3(current);
+        break;
+      case 3:
+        current = migrateV3toV4(current);
         break;
       default:
         throw new Error(

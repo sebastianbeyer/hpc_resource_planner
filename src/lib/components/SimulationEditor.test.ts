@@ -13,7 +13,6 @@ function sampleSim(overrides: Partial<Simulation> = {}): Simulation {
     ensembles: 1,
     dataPortfolio: '',
     overheadMultiplier: 1.15,
-    locked: false,
     completed: false,
     ...overrides
   };
@@ -72,47 +71,6 @@ describe('SimulationEditor', () => {
     const select = getByTestId('sim-model') as HTMLSelectElement;
     expect(select.disabled).toBe(true);
     expect(getByText(/no models — define one in Models tab/i)).toBeTruthy();
-  });
-
-  it('toggling locked reveals the pinnedHpcId select and pre-fills with first HPC', async () => {
-    const onChange = vi.fn();
-    const { getByTestId, queryByTestId } = render(SimulationEditor, {
-      props: {
-        sim: sampleSim(),
-        models: [sampleModel()],
-        hpcs: sampleHpcs(),
-        dataPortfolios: ['standard'],
-        resolutions: ['tco79'],
-        onChange,
-        onDelete: vi.fn()
-      }
-    });
-
-    // Initially no pinned select.
-    expect(queryByTestId('sim-pinned')).toBeNull();
-
-    // Toggle locked on.
-    await fireEvent.click(getByTestId('sim-locked'));
-
-    expect(onChange).toHaveBeenCalledTimes(1);
-    const next = onChange.mock.calls[0][0] as Simulation;
-    expect(next.locked).toBe(true);
-    expect(next.pinnedHpcId).toBe('h1');
-  });
-
-  it('shows the locked-without-pin warning when locked and no pinnedHpcId is set', () => {
-    const { getByTestId } = render(SimulationEditor, {
-      props: {
-        sim: sampleSim({ locked: true }),
-        models: [sampleModel()],
-        hpcs: sampleHpcs(),
-        dataPortfolios: ['standard'],
-        resolutions: ['tco79'],
-        onChange: vi.fn(),
-        onDelete: vi.fn()
-      }
-    });
-    expect(getByTestId('warn-locked-no-pin')).toBeTruthy();
   });
 
   it('toggles the completed flag', async () => {

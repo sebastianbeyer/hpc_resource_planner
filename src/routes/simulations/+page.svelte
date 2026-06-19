@@ -40,7 +40,6 @@
       ensembles: 1,
       dataPortfolio: '',
       overheadMultiplier: 1.15,
-      locked: false,
       completed: false,
     };
     appState.update((s) => ({ ...s, simulations: [...s.simulations, sim] }));
@@ -260,13 +259,6 @@
                         class="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600"
                       >
                         Completed
-                      </span>
-                    {/if}
-                    {#if sim.locked}
-                      <span
-                        class="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700"
-                      >
-                        Locked
                       </span>
                     {/if}
                     {#if sim.zeroCompute}

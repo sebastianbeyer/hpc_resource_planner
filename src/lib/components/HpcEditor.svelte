@@ -34,7 +34,7 @@
 
   function deleteHpc() {
     // Confirm + cascade handling lives in the page (see /hpcs/+page.svelte)
-    // so it can describe references like assignments and locked sims.
+    // so it can describe references like assignments and compute-cost cells.
     onDelete();
   }
 </script>

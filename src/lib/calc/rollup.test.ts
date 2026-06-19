@@ -8,13 +8,13 @@ import { isOverBudget, rollup } from './rollup';
  *   - one model with a single (resolution, hpc) cost cell
  *   - three sims:
  *       * sim-explicit: explicit 50/50 assignment
- *       * sim-locked:   locked & pinned, no explicit assignment
- *                       → should be synthesised onto period 1
+ *       * sim-pinned-p1: explicit 100% on p1 (was a locked-and-pinned sim
+ *                       in older schemas — see the v3→v4 migration)
  *       * sim-historic: zeroCompute (storage-only)
  */
 function buildState(): AppState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     dataPortfolios: ['standard'],
     resolutions: ['tco79'],
     hpcs: [
@@ -65,21 +65,18 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
-        locked: false,
         completed: false
       },
       {
-        id: 'sim-locked',
-        name: 'Locked',
+        id: 'sim-pinned-p1',
+        name: 'Pinned to p1',
         modelId: 'm1',
         resolution: 'tco79',
         lengthYears: 1,
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
-        locked: true,
-        completed: false,
-        pinnedHpcId: 'hpc1'
+        completed: false
       },
       {
         id: 'sim-historic',
@@ -90,7 +87,6 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1,
-        locked: false,
         completed: false,
         zeroCompute: true
       }
@@ -100,6 +96,11 @@ function buildState(): AppState {
         simulationId: 'sim-explicit',
         hpcId: 'hpc1',
         periodSplit: { p1: 0.5, p2: 0.5 }
+      },
+      {
+        simulationId: 'sim-pinned-p1',
+        hpcId: 'hpc1',
+        periodSplit: { p1: 1 }
       },
       {
         simulationId: 'sim-historic',
@@ -114,7 +115,7 @@ describe('rollup', () => {
   it('initialises HPCs even with zero assignments', () => {
     const state = buildState();
     state.assignments = [];
-    state.simulations = []; // also drop locked sim so no synthesis
+    state.simulations = [];
     const r = rollup(state);
     expect(r.hpc1.storageUsedTb).toBe(0);
     expect(r.hpc1.storageCompletedTb).toBe(0);
@@ -125,20 +126,20 @@ describe('rollup', () => {
     expect(r.hpc1.periods.p1.gpuBudget).toBe(1_000);
   });
 
-  it('rolls up an end-to-end state with explicit, locked, and historic sims', () => {
+  it('rolls up an end-to-end state with explicit, pinned, and historic sims', () => {
     const r = rollup(buildState());
     const hpc = r.hpc1;
 
     // Per sim (12 months each):
-    //   sim-explicit: cpu 1200, gpu 120, storage 6 — split 50/50
-    //   sim-locked  : cpu 1200, gpu 120, storage 6 — synthesised on p1 (100%)
-    //   sim-historic: cpu 0,    gpu 0,   storage 6 — explicit 100% on p1
+    //   sim-explicit:    cpu 1200, gpu 120, storage 6 — split 50/50
+    //   sim-pinned-p1:   cpu 1200, gpu 120, storage 6 — explicit 100% on p1
+    //   sim-historic:    cpu 0,    gpu 0,   storage 6 — explicit 100% on p1
 
     // Storage = 6 + 6 + 6 = 18
     expect(hpc.storageUsedTb).toBe(18);
     expect(hpc.storageCompletedTb).toBe(0);
 
-    // p1 compute = 1200/2 (explicit) + 1200 (locked synthesised) + 0 (historic)
+    // p1 compute = 1200/2 (explicit) + 1200 (pinned) + 0 (historic)
     //            = 600 + 1200 = 1800
     expect(hpc.periods.p1.cpuUsed).toBe(1800);
     expect(hpc.periods.p1.cpuCompleted).toBe(0);
@@ -194,45 +195,6 @@ describe('rollup', () => {
     expect(r.hpc1.periods.p2.gpuCompleted).toBe(60);
   });
 
-  it('synthesises a locked sims assignment onto the HPCs first period', () => {
-    const state = buildState();
-    // Strip every assignment so we can see the synthesis in isolation.
-    state.assignments = [];
-    // Also drop the non-locked sims to leave only the locked one.
-    state.simulations = state.simulations.filter((s) => s.id === 'sim-locked');
-    const r = rollup(state);
-    expect(r.hpc1.periods.p1.cpuUsed).toBe(1200);
-    expect(r.hpc1.periods.p2.cpuUsed).toBe(0);
-    // Storage still lands on the pinned HPC.
-    expect(r.hpc1.storageUsedTb).toBe(6);
-  });
-
-  it('synthesises an empty split for a locked sim whose pinned HPC has no periods (compute dropped, storage kept)', () => {
-    const state = buildState();
-    state.hpcs[0].periods = []; // remove all periods
-    state.assignments = [];
-    state.simulations = state.simulations.filter((s) => s.id === 'sim-locked');
-    const r = rollup(state);
-    // No period buckets to receive compute, but storage still lands.
-    expect(Object.keys(r.hpc1.periods)).toHaveLength(0);
-    expect(r.hpc1.storageUsedTb).toBe(6);
-  });
-
-  it('does NOT synthesise when the locked sim already has an explicit assignment', () => {
-    const state = buildState();
-    // Give sim-locked an explicit 50/50 — synthesis must NOT add a second one.
-    state.assignments.push({
-      simulationId: 'sim-locked',
-      hpcId: 'hpc1',
-      periodSplit: { p1: 0.5, p2: 0.5 }
-    });
-    const r = rollup(state);
-    // sim-locked compute: cpu 600 on each period (not 1200 on p1 + 0 on p2).
-    // Total p1 cpu = explicit-sim 600 + locked 600 + historic 0 = 1200
-    expect(r.hpc1.periods.p1.cpuUsed).toBe(1200);
-    expect(r.hpc1.periods.p2.cpuUsed).toBe(1200);
-  });
-
   it('silently ignores periodSplit keys that do not exist on the target HPC', () => {
     const state = buildState();
     state.assignments = [
@@ -284,11 +246,11 @@ describe('rollup segments', () => {
     const r = rollup(state);
     const hpc = r.hpc1;
 
-    // Storage: sim-explicit (6), sim-locked (6), sim-historic (6) → 3 segments.
+    // Storage: sim-explicit (6), sim-pinned-p1 (6), sim-historic (6) → 3 segments.
     expect(hpc.storageSegments.map((s) => s.simulationId).sort()).toEqual([
       'sim-explicit',
       'sim-historic',
-      'sim-locked'
+      'sim-pinned-p1'
     ]);
     const storageExplicit = hpc.storageSegments.find(
       (s) => s.simulationId === 'sim-explicit'
@@ -297,16 +259,16 @@ describe('rollup segments', () => {
     expect(storageExplicit.value).toBe(6);
     expect(storageExplicit.completed).toBe(true);
 
-    // p1 CPU: sim-explicit (600) + sim-locked (1200). sim-historic is
+    // p1 CPU: sim-explicit (600) + sim-pinned-p1 (1200). sim-historic is
     // zeroCompute so it contributes nothing to compute segments.
     const p1CpuIds = hpc.periods.p1.cpuSegments.map((s) => s.simulationId).sort();
-    expect(p1CpuIds).toEqual(['sim-explicit', 'sim-locked']);
+    expect(p1CpuIds).toEqual(['sim-explicit', 'sim-pinned-p1']);
     const p1CpuExplicit = hpc.periods.p1.cpuSegments.find(
       (s) => s.simulationId === 'sim-explicit'
     )!;
     expect(p1CpuExplicit.value).toBe(600);
 
-    // p2 CPU: only sim-explicit (600). sim-locked is fully on p1.
+    // p2 CPU: only sim-explicit (600). sim-pinned-p1 is fully on p1.
     expect(hpc.periods.p2.cpuSegments.map((s) => s.simulationId)).toEqual([
       'sim-explicit'
     ]);
@@ -314,7 +276,7 @@ describe('rollup segments', () => {
     // GPU segments mirror the CPU ones but with gpu hours.
     expect(hpc.periods.p1.gpuSegments.map((s) => s.simulationId).sort()).toEqual([
       'sim-explicit',
-      'sim-locked'
+      'sim-pinned-p1'
     ]);
   });
 
@@ -336,7 +298,7 @@ describe('rollup segments', () => {
 describe('isOverBudget', () => {
   it('returns false on a fresh rollup of an empty state', () => {
     const r = rollup({
-      schemaVersion: 3,
+      schemaVersion: 4,
       hpcs: [],
       models: [],
       simulations: [],

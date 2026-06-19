@@ -34,7 +34,6 @@ function makeSim(overrides: Partial<Simulation> = {}): Simulation {
     ensembles: 1,
     dataPortfolio: 'standard',
     overheadMultiplier: 1,
-    locked: false,
     completed: false,
     ...overrides
   };

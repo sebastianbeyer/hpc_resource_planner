@@ -32,7 +32,6 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: 'standard',
       overheadMultiplier: 1.15,
-      locked: false,
       completed: false
     };
 
@@ -68,7 +67,6 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: 'standard',
       overheadMultiplier: 1.15,
-      locked: false,
       completed: false
     };
 
@@ -95,7 +93,6 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: '',
       overheadMultiplier: 1.15,
-      locked: false,
       completed: false
     };
 

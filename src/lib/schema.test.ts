@@ -4,7 +4,7 @@ import type { AppState } from './types';
 
 function makeFullState(): AppState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     hpcs: [
       {
         id: 'hpc-1',
@@ -43,21 +43,18 @@ function makeFullState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false,
         completed: false
       },
       {
         id: 'sim-2',
-        name: 'pinned',
+        name: 'second',
         modelId: 'model-1',
         resolution: 'tco399',
         lengthYears: 5,
         ensembles: 2,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1.0,
-        locked: true,
-        completed: false,
-        pinnedHpcId: 'hpc-1',
+        completed: true,
         packageLabel: 'phase-1',
         zeroCompute: false
       }
@@ -215,13 +212,6 @@ describe('validateState', () => {
     expect(() => validateState(s)).toThrow(/overheadMultiplier.*finite/);
   });
 
-  it('rejects a locked simulation without pinnedHpcId', () => {
-    const s = makeFullState();
-    s.simulations[1].locked = true;
-    delete s.simulations[1].pinnedHpcId;
-    expect(() => validateState(s)).toThrow(/pinnedHpcId.*required when simulation is locked/);
-  });
-
   it('rejects a simulation with non-boolean completed flag', () => {
     const s = makeFullState();
     (s.simulations[0] as unknown as Record<string, unknown>).completed = 'yes';
@@ -327,7 +317,7 @@ describe('migrate', () => {
     };
 
     const out = migrate(v1);
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.models[0].costs.tco399['hpc-1']).toEqual({
       cpuHoursPerSimMonth: 100,
       gpuHoursPerSimMonth: 0
@@ -350,8 +340,128 @@ describe('migrate', () => {
     };
 
     const out = migrate(v2);
-    expect(out.schemaVersion).toBe(3);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.simulations.every((sim) => sim.completed === false)).toBe(true);
+  });
+
+  it('migrates a v3 locked-and-pinned sim to v4: completed=true plus a synthesised assignment', () => {
+    const v3 = {
+      schemaVersion: 3,
+      hpcs: [
+        {
+          id: 'hpc-1',
+          name: 'LUMI',
+          storageBudgetTb: 100,
+          periods: [
+            { id: 'p-1', label: '2026', cpuHoursBudget: 100, gpuHoursBudget: 10 },
+            { id: 'p-2', label: '2027', cpuHoursBudget: 100, gpuHoursBudget: 10 }
+          ]
+        }
+      ],
+      models: [],
+      simulations: [
+        {
+          id: 'sim-locked',
+          name: 'locked-no-explicit',
+          modelId: '',
+          resolution: '',
+          lengthYears: 1,
+          ensembles: 1,
+          dataPortfolio: '',
+          overheadMultiplier: 1,
+          completed: false,
+          locked: true,
+          pinnedHpcId: 'hpc-1'
+        }
+      ],
+      assignments: [],
+      dataPortfolios: [],
+      resolutions: []
+    };
+
+    const out = migrate(v3);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    // locked/pinnedHpcId fields are stripped; completed is flipped on.
+    const sim = out.simulations[0] as Record<string, unknown>;
+    expect(sim.completed).toBe(true);
+    expect('locked' in sim).toBe(false);
+    expect('pinnedHpcId' in sim).toBe(false);
+    // A synthesised assignment lands on the pinned HPC's first period.
+    expect(out.assignments).toEqual([
+      { simulationId: 'sim-locked', hpcId: 'hpc-1', periodSplit: { 'p-1': 1 } }
+    ]);
+  });
+
+  it('does not synthesise a v4 assignment for a locked sim that already has one', () => {
+    const v3 = {
+      schemaVersion: 3,
+      hpcs: [
+        {
+          id: 'hpc-1',
+          name: 'LUMI',
+          storageBudgetTb: 100,
+          periods: [
+            { id: 'p-1', label: '2026', cpuHoursBudget: 100, gpuHoursBudget: 10 }
+          ]
+        }
+      ],
+      models: [],
+      simulations: [
+        {
+          id: 'sim-locked',
+          name: 'locked-with-explicit',
+          modelId: '',
+          resolution: '',
+          lengthYears: 1,
+          ensembles: 1,
+          dataPortfolio: '',
+          overheadMultiplier: 1,
+          completed: false,
+          locked: true,
+          pinnedHpcId: 'hpc-1'
+        }
+      ],
+      assignments: [
+        { simulationId: 'sim-locked', hpcId: 'hpc-1', periodSplit: { 'p-1': 0.5 } }
+      ],
+      dataPortfolios: [],
+      resolutions: []
+    };
+
+    const out = migrate(v3);
+    expect(out.assignments).toHaveLength(1);
+    expect(out.assignments[0].periodSplit).toEqual({ 'p-1': 0.5 });
+    expect(out.simulations[0].completed).toBe(true);
+  });
+
+  it('strips locked=false from v3 sims without touching completed', () => {
+    const v3 = {
+      schemaVersion: 3,
+      hpcs: [],
+      models: [],
+      simulations: [
+        {
+          id: 'sim-plain',
+          name: 'unlocked',
+          modelId: '',
+          resolution: '',
+          lengthYears: 1,
+          ensembles: 1,
+          dataPortfolio: '',
+          overheadMultiplier: 1,
+          completed: false,
+          locked: false
+        }
+      ],
+      assignments: [],
+      dataPortfolios: [],
+      resolutions: []
+    };
+
+    const out = migrate(v3);
+    expect(out.simulations[0].completed).toBe(false);
+    expect('locked' in out.simulations[0]).toBe(false);
+    expect(out.assignments).toHaveLength(0);
   });
 
   it('throws on a newer-than-supported schemaVersion', () => {
