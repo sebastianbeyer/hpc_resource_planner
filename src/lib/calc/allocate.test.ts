@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocateAcrossPeriods, autoSpread, normaliseSplit } from './allocate';
+import { allocateAcrossPeriods, normaliseSplit } from './allocate';
 
 describe('allocateAcrossPeriods', () => {
   it('puts everything on a single-period sim (1.0 on one period)', () => {
@@ -79,36 +79,5 @@ describe('normaliseSplit', () => {
     // 0.1 + 0.2 + 0.7 in float = 0.9999999... within tolerance.
     const { valid } = normaliseSplit({ p1: 0.1, p2: 0.2, p3: 0.7 });
     expect(valid).toBe(true);
-  });
-});
-
-describe('autoSpread', () => {
-  it('spreads evenly across n periods', () => {
-    expect(autoSpread(['a', 'b', 'c', 'd'], 4)).toEqual({
-      a: 0.25,
-      b: 0.25,
-      c: 0.25,
-      d: 0.25
-    });
-  });
-
-  it('takes only the first n periodIds', () => {
-    expect(autoSpread(['a', 'b', 'c', 'd'], 2)).toEqual({ a: 0.5, b: 0.5 });
-  });
-
-  it('uses all periods when n > length', () => {
-    expect(autoSpread(['a', 'b'], 5)).toEqual({ a: 0.5, b: 0.5 });
-  });
-
-  it('returns {} for n=0', () => {
-    expect(autoSpread(['a', 'b'], 0)).toEqual({});
-  });
-
-  it('returns {} for n<0', () => {
-    expect(autoSpread(['a', 'b'], -1)).toEqual({});
-  });
-
-  it('returns {} for empty periodIds', () => {
-    expect(autoSpread([], 3)).toEqual({});
   });
 });

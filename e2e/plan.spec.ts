@@ -98,12 +98,10 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   const trayCard = tray.getByTestId('simulation-card').first();
   await expect(trayCard).toBeVisible();
 
-  // Click the "Assign to ▾" button then pick Levante from the menu.
+  // Click the "Assign to ▾" button then pick the only available
+  // "Levante · 2026" target. The menu drills into HPC × period.
   await trayCard.getByTestId('assign-to').click();
-  await trayCard
-    .locator('[data-testid="assign-option"][data-target-hpc-id]')
-    .first()
-    .click();
+  await trayCard.getByTestId('assign-option').first().click();
 
   await page.waitForTimeout(500);
 

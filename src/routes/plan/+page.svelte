@@ -18,17 +18,15 @@
     unassigned
   } from '$lib/stores/derived-plan';
 
-  function assign(simId: string, hpcId: string) {
+  function assignToPeriod(simId: string, hpcId: string, periodId: string) {
     appState.update((s) => {
       const without = s.assignments.filter((a) => a.simulationId !== simId);
-      const hpc = s.hpcs.find((h) => h.id === hpcId);
-      const firstPeriod = hpc?.periods[0]?.id;
-      const periodSplit: Record<string, number> = firstPeriod
-        ? { [firstPeriod]: 1 }
-        : {};
       return {
         ...s,
-        assignments: [...without, { simulationId: simId, hpcId, periodSplit }]
+        assignments: [
+          ...without,
+          { simulationId: simId, hpcId, periodSplit: { [periodId]: 1 } }
+        ]
       };
     });
   }
@@ -89,7 +87,7 @@
         sims={$unassigned}
         models={$modelsStore}
         hpcs={$hpcsStore}
-        onAssign={assign}
+        onAssignToPeriod={assignToPeriod}
         onUnassign={unassign}
         onCompletedChange={setCompleted}
       />
@@ -102,7 +100,7 @@
             hpcs={$hpcsStore}
             assignments={$assignmentsStore}
             rollup={$rollupStore[hpc.id]}
-            onAssign={assign}
+            onAssignToPeriod={assignToPeriod}
             onUnassign={unassign}
             onSplitChange={setSplit}
             onCompletedChange={setCompleted}

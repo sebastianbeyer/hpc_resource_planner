@@ -70,81 +70,73 @@ const assignments: Assignment[] = [
   { simulationId: 's1', hpcId: 'h1', periodSplit: { p1: 1 } }
 ];
 
+function baseProps(overrides: Record<string, unknown> = {}) {
+  return {
+    hpc,
+    sims: [] as Simulation[],
+    models,
+    hpcs: [hpc],
+    assignments: [] as Assignment[],
+    rollup,
+    onAssignToPeriod: vi.fn(),
+    onUnassign: vi.fn(),
+    onSplitChange: vi.fn(),
+    onCompletedChange: vi.fn(),
+    ...overrides
+  };
+}
+
 describe('HpcLane', () => {
   it('renders the HPC name', () => {
-    const { container } = render(HpcLane, {
-      props: {
-        hpc,
-        sims: [],
-        models,
-        hpcs: [hpc],
-        assignments: [],
-        rollup,
-        onAssign: vi.fn(),
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
-    });
+    const { container } = render(HpcLane, { props: baseProps() });
     expect(container.textContent).toMatch(/Levante/);
   });
 
   it('renders 2 budget meters per period (CPU + GPU) plus 1 storage meter', () => {
-    const { getAllByTestId } = render(HpcLane, {
-      props: {
-        hpc,
-        sims: [],
-        models,
-        hpcs: [hpc],
-        assignments: [],
-        rollup,
-        onAssign: vi.fn(),
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
-    });
+    const { getAllByTestId } = render(HpcLane, { props: baseProps() });
     // 2 periods × 2 (CPU + GPU) + 1 storage = 5 meters
     expect(getAllByTestId('budget-meter').length).toBe(5);
   });
 
-  it('renders an embedded SimulationCard for each assigned sim', () => {
-    const { getAllByTestId } = render(HpcLane, {
-      props: {
-        hpc,
-        sims,
-        models,
-        hpcs: [hpc],
-        assignments,
-        rollup,
-        onAssign: vi.fn(),
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
-    });
-    expect(getAllByTestId('simulation-card').length).toBe(1);
+  it('renders one period-section per period', () => {
+    const { getAllByTestId } = render(HpcLane, { props: baseProps() });
+    expect(getAllByTestId('period-section').length).toBe(2);
   });
 
-  it('shows empty state when no sims are assigned', () => {
-    const { getByTestId } = render(HpcLane, {
-      props: {
-        hpc,
-        sims: [],
-        models,
-        hpcs: [hpc],
-        assignments: [],
-        rollup,
-        onAssign: vi.fn(),
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
+  it('only shows an assigned sim in the period sections where it has a non-zero share', () => {
+    const { container } = render(HpcLane, {
+      props: baseProps({ sims, assignments })
     });
-    expect(getByTestId('lane-empty').textContent).toMatch(/No sims/);
+    // p1 has 100% — should render the card
+    const p1 = container.querySelector('[data-testid="period-section"][data-period-id="p1"]');
+    expect(p1?.querySelectorAll('[data-testid="simulation-card"]').length).toBe(1);
+    // p2 has 0% — should render the empty hint instead
+    const p2 = container.querySelector('[data-testid="period-section"][data-period-id="p2"]');
+    expect(p2?.querySelectorAll('[data-testid="simulation-card"]').length).toBe(0);
+    expect(p2?.querySelector('[data-testid="period-empty"]')).toBeTruthy();
   });
 
-  it('separates completed assigned sims into a collapsable Done section', async () => {
+  it('renders the same sim in BOTH period sections when split across periods', () => {
+    const splitAssignments: Assignment[] = [
+      { simulationId: 's1', hpcId: 'h1', periodSplit: { p1: 0.5, p2: 0.5 } }
+    ];
+    const { container } = render(HpcLane, {
+      props: baseProps({ sims, assignments: splitAssignments })
+    });
+    const p1 = container.querySelector('[data-testid="period-section"][data-period-id="p1"]');
+    const p2 = container.querySelector('[data-testid="period-section"][data-period-id="p2"]');
+    expect(p1?.querySelectorAll('[data-testid="simulation-card"]').length).toBe(1);
+    expect(p2?.querySelectorAll('[data-testid="simulation-card"]').length).toBe(1);
+  });
+
+  it('shows a per-period empty hint when no sims land in that period', () => {
+    const { getAllByTestId } = render(HpcLane, { props: baseProps() });
+    const hints = getAllByTestId('period-empty');
+    expect(hints.length).toBe(2);
+    expect(hints[0].textContent).toMatch(/Drop a card here/);
+  });
+
+  it('separates completed sims into a collapsable Done section within their period', async () => {
     const mixed: Simulation[] = [
       { ...sims[0], id: 's1', name: 'pending' },
       {
@@ -159,48 +151,38 @@ describe('HpcLane', () => {
         completed: true
       }
     ];
-    const { getByTestId, queryByTestId, container } = render(HpcLane, {
-      props: {
-        hpc,
-        sims: mixed,
-        models,
-        hpcs: [hpc],
-        assignments: [
-          { simulationId: 's1', hpcId: 'h1', periodSplit: { p1: 1 } },
-          { simulationId: 's2', hpcId: 'h1', periodSplit: { p1: 1 } }
-        ],
-        rollup,
-        onAssign: vi.fn(),
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
+    const mixedAssignments: Assignment[] = [
+      { simulationId: 's1', hpcId: 'h1', periodSplit: { p1: 1 } },
+      { simulationId: 's2', hpcId: 'h1', periodSplit: { p1: 1 } }
+    ];
+    const { container } = render(HpcLane, {
+      props: baseProps({ sims: mixed, assignments: mixedAssignments })
     });
-    const toggle = getByTestId('lane-toggle-done');
+    const p1 = container.querySelector(
+      '[data-testid="period-section"][data-period-id="p1"]'
+    )!;
+    const toggle = p1.querySelector(
+      '[data-testid="period-toggle-done"]'
+    ) as HTMLElement;
     expect(toggle.textContent).toMatch(/Done/);
     expect(toggle.textContent).toMatch(/1/);
-    expect(container.querySelectorAll('[data-testid="lane-done-section"] [data-testid="simulation-card"]').length).toBe(1);
+    expect(
+      p1.querySelectorAll(
+        '[data-testid="period-done-section"] [data-testid="simulation-card"]'
+      ).length
+    ).toBe(1);
     await fireEvent.click(toggle);
-    expect(queryByTestId('lane-done-section')).toBeNull();
+    expect(p1.querySelector('[data-testid="period-done-section"]')).toBeNull();
   });
 
-  it('fires onAssign when a sim id is dropped on the lane', () => {
-    const onAssign = vi.fn();
-    const { getByTestId } = render(HpcLane, {
-      props: {
-        hpc,
-        sims: [],
-        models,
-        hpcs: [hpc],
-        assignments: [],
-        rollup,
-        onAssign,
-        onUnassign: vi.fn(),
-        onSplitChange: vi.fn(),
-        onCompletedChange: vi.fn()
-      }
+  it('fires onAssignToPeriod when a sim id is dropped on a period section', () => {
+    const onAssignToPeriod = vi.fn();
+    const { container } = render(HpcLane, {
+      props: baseProps({ onAssignToPeriod })
     });
-    const lane = getByTestId('hpc-lane');
+    const section = container.querySelector(
+      '[data-testid="period-section"][data-period-id="p2"]'
+    )!;
     const data: Record<string, string> = {
       'application/x-sim-id': 's1',
       'text/plain': 's1'
@@ -211,7 +193,7 @@ describe('HpcLane', () => {
     };
     const drop = new Event('drop', { bubbles: true, cancelable: true });
     Object.defineProperty(drop, 'dataTransfer', { value: dt });
-    lane.dispatchEvent(drop);
-    expect(onAssign).toHaveBeenCalledWith('s1', 'h1');
+    section.dispatchEvent(drop);
+    expect(onAssignToPeriod).toHaveBeenCalledWith('s1', 'h1', 'p2');
   });
 });

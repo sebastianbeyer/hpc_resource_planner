@@ -20,19 +20,6 @@ describe('PeriodSplitEditor', () => {
     expect(getAllByTestId('split-input').length).toBe(2);
   });
 
-  it('auto-spread N=2 produces 0.5/0.5 and fires onChange', async () => {
-    const onChange = vi.fn();
-    const { getByTestId } = render(PeriodSplitEditor, {
-      props: { assignment: assignment(), periods, onChange }
-    });
-    await fireEvent.input(getByTestId('spread-n'), { target: { value: '2' } });
-    await fireEvent.click(getByTestId('spread-apply'));
-    expect(onChange).toHaveBeenCalled();
-    const last = onChange.mock.calls.at(-1)![0] as Record<string, number>;
-    expect(last.p1).toBeCloseTo(0.5);
-    expect(last.p2).toBeCloseTo(0.5);
-  });
-
   it('manual input triggers onChange', async () => {
     const onChange = vi.fn();
     const { getAllByTestId } = render(PeriodSplitEditor, {

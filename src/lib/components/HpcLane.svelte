@@ -11,13 +11,13 @@
   export let hpcs: Hpc[];
   export let assignments: Assignment[];
   export let rollup: HpcRollup;
-  export let onAssign: (simId: string, hpcId: string) => void;
+  export let onAssignToPeriod: (simId: string, hpcId: string, periodId: string) => void;
   export let onUnassign: (simId: string) => void;
   export let onSplitChange: (simId: string, split: Record<string, number>) => void;
   export let onCompletedChange: (simId: string, completed: boolean) => void;
 
-  let dragOver = false;
-  let showDone = true;
+  let dragOverPeriod: string | null = null;
+  let showDone: Record<string, boolean> = {};
 
   function findAssignment(simId: string): Assignment | undefined {
     return assignments.find((a) => a.simulationId === simId);
@@ -33,8 +33,13 @@
     });
   }
 
-  $: pendingSims = sims.filter((s) => !s.completed);
-  $: doneSims = sims.filter((s) => s.completed);
+  function simsForPeriod(periodId: string): Simulation[] {
+    return sims.filter((sim) => {
+      const a = findAssignment(sim.id);
+      const f = a?.periodSplit[periodId];
+      return typeof f === 'number' && f > 0;
+    });
+  }
 
   function readSimId(e: DragEvent): string | undefined {
     const id =
@@ -43,78 +48,37 @@
     return id || undefined;
   }
 
-  function onDragOver(e: DragEvent) {
+  function onPeriodDragOver(e: DragEvent, periodId: string) {
     if (!e.dataTransfer) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    dragOver = true;
+    dragOverPeriod = periodId;
   }
 
-  function onDragLeave(e: DragEvent) {
-    // Only clear when leaving the lane element itself, not entering a child.
-    if (e.currentTarget === e.target) dragOver = false;
+  function onPeriodDragLeave(e: DragEvent) {
+    if (e.currentTarget === e.target) dragOverPeriod = null;
   }
 
-  function onDrop(e: DragEvent) {
+  function onPeriodDrop(e: DragEvent, periodId: string) {
     e.preventDefault();
-    dragOver = false;
+    dragOverPeriod = null;
     const simId = readSimId(e);
-    if (simId) onAssign(simId, hpc.id);
+    if (simId) onAssignToPeriod(simId, hpc.id, periodId);
   }
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <section
-  class="flex min-w-[18rem] flex-1 basis-0 flex-col rounded-lg border bg-white p-3 shadow-sm"
-  class:border-slate-300={!dragOver}
-  class:border-sky-500={dragOver}
-  class:ring-2={dragOver}
-  class:ring-sky-200={dragOver}
-  on:dragover={onDragOver}
-  on:dragleave={onDragLeave}
-  on:drop={onDrop}
+  class="flex min-w-[18rem] flex-1 basis-0 flex-col rounded-lg border border-slate-300 bg-white p-3 shadow-sm"
   aria-label={`HPC lane: ${hpc.name || 'unnamed HPC'}`}
   data-testid="hpc-lane"
   data-hpc-id={hpc.id}
-  data-drag-over={dragOver ? 'true' : 'false'}
 >
   <header class="mb-2">
     <h2 class="text-sm font-semibold text-slate-900">{hpc.name || '(unnamed HPC)'}</h2>
   </header>
 
-  <!-- Per-period CPU/GPU meters -->
-  <div class="space-y-3 border-b border-slate-200 pb-3">
-    {#each hpc.periods as period (period.id)}
-      {@const pr = rollup.periods[period.id]}
-      <div class="space-y-2">
-        <div class="text-[11px] font-semibold text-slate-700">{period.label || period.id}</div>
-        <BudgetMeter
-          used={pr?.cpuUsed ?? 0}
-          completed={pr?.cpuCompleted ?? 0}
-          budget={pr?.cpuBudget ?? 0}
-          segments={sortSegments(pr?.cpuSegments ?? [])}
-          unit="CPU h"
-          label="CPU"
-          formatValue={formatHours}
-        />
-        <BudgetMeter
-          used={pr?.gpuUsed ?? 0}
-          completed={pr?.gpuCompleted ?? 0}
-          budget={pr?.gpuBudget ?? 0}
-          segments={sortSegments(pr?.gpuSegments ?? [])}
-          unit="GPU h"
-          label="GPU"
-          formatValue={formatHours}
-        />
-      </div>
-    {/each}
-    {#if hpc.periods.length === 0}
-      <p class="text-[11px] italic text-slate-500">No periods defined for this HPC.</p>
-    {/if}
-  </div>
-
   <!-- Cumulative storage meter (per HPC, not per period) -->
-  <div class="my-3" data-testid="storage-meter-wrapper">
+  <div class="mb-3 border-b border-slate-200 pb-3" data-testid="storage-meter-wrapper">
     <BudgetMeter
       used={rollup.storageUsedTb}
       completed={rollup.storageCompletedTb}
@@ -126,63 +90,126 @@
     />
   </div>
 
-  <!-- Assigned sims -->
-  <div class="space-y-2" data-testid="lane-sims">
-    {#if sims.length === 0}
-      <p
-        class="rounded border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-[11px] italic text-slate-500"
-        data-testid="lane-empty"
+  {#if hpc.periods.length === 0}
+    <p class="text-[11px] italic text-slate-500">No periods defined for this HPC.</p>
+  {:else}
+    {#each hpc.periods as period, idx (period.id)}
+      {@const pr = rollup.periods[period.id]}
+      {@const periodSims = simsForPeriod(period.id)}
+      {@const pending = periodSims.filter((s) => !s.completed)}
+      {@const done = periodSims.filter((s) => s.completed)}
+      {@const isDragOver = dragOverPeriod === period.id}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="rounded-md border p-2"
+        class:border-transparent={!isDragOver}
+        class:border-sky-500={isDragOver}
+        class:bg-sky-50={isDragOver}
+        class:ring-2={isDragOver}
+        class:ring-sky-200={isDragOver}
+        class:mt-3={idx > 0}
+        class:border-t={idx > 0 && !isDragOver}
+        class:border-t-slate-200={idx > 0 && !isDragOver}
+        on:dragover={(e) => onPeriodDragOver(e, period.id)}
+        on:dragleave={onPeriodDragLeave}
+        on:drop={(e) => onPeriodDrop(e, period.id)}
+        data-testid="period-section"
+        data-period-id={period.id}
+        data-drag-over={isDragOver ? 'true' : 'false'}
       >
-        No sims assigned. Drop a card here to assign.
-      </p>
-    {:else}
-      {#each pendingSims as sim (sim.id)}
-        {@const assignment = findAssignment(sim.id)}
-        <SimulationCard
-          {sim}
-          {models}
-          {hpcs}
-          hpcId={hpc.id}
-          {assignment}
-          onAssign={(targetHpcId) => onAssign(sim.id, targetHpcId)}
-          onUnassign={() => onUnassign(sim.id)}
-          onSplitChange={(split) => onSplitChange(sim.id, split)}
-          onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
-        />
-      {/each}
+        <div class="mb-2 text-[11px] font-semibold text-slate-700">
+          {period.label || period.id}
+        </div>
+        <div class="space-y-2">
+          <BudgetMeter
+            used={pr?.cpuUsed ?? 0}
+            completed={pr?.cpuCompleted ?? 0}
+            budget={pr?.cpuBudget ?? 0}
+            segments={sortSegments(pr?.cpuSegments ?? [])}
+            unit="CPU h"
+            label="CPU"
+            formatValue={formatHours}
+          />
+          <BudgetMeter
+            used={pr?.gpuUsed ?? 0}
+            completed={pr?.gpuCompleted ?? 0}
+            budget={pr?.gpuBudget ?? 0}
+            segments={sortSegments(pr?.gpuSegments ?? [])}
+            unit="GPU h"
+            label="GPU"
+            formatValue={formatHours}
+          />
+        </div>
 
-      {#if doneSims.length > 0}
-        <div class="mt-3 border-t border-slate-200 pt-2">
-          <button
-            type="button"
-            class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-            on:click={() => (showDone = !showDone)}
-            data-testid="lane-toggle-done"
-            aria-expanded={showDone}
-          >
-            <span>{showDone ? '▼' : '▶'} Done</span>
-            <span class="text-slate-500">{doneSims.length}</span>
-          </button>
-          {#if showDone}
-            <div class="mt-2 space-y-2" data-testid="lane-done-section">
-              {#each doneSims as sim (sim.id)}
-                {@const assignment = findAssignment(sim.id)}
-                <SimulationCard
-                  {sim}
-                  {models}
-                  {hpcs}
-                  hpcId={hpc.id}
-                  {assignment}
-                  onAssign={(targetHpcId) => onAssign(sim.id, targetHpcId)}
-                  onUnassign={() => onUnassign(sim.id)}
-                  onSplitChange={(split) => onSplitChange(sim.id, split)}
-                  onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
-                />
-              {/each}
-            </div>
+        <div class="mt-3 space-y-2" data-testid="period-sims">
+          {#if periodSims.length === 0}
+            <p
+              class="rounded border border-dashed border-slate-300 bg-slate-50 p-2 text-center text-[11px] italic text-slate-500"
+              data-testid="period-empty"
+            >
+              Drop a card here to assign to {period.label || period.id}.
+            </p>
+          {:else}
+            {#each pending as sim (sim.id)}
+              {@const assignment = findAssignment(sim.id)}
+              <SimulationCard
+                {sim}
+                {models}
+                {hpcs}
+                hpcId={hpc.id}
+                periodId={period.id}
+                {assignment}
+                onAssignToPeriod={(targetHpcId, targetPeriodId) =>
+                  onAssignToPeriod(sim.id, targetHpcId, targetPeriodId)}
+                onUnassign={() => onUnassign(sim.id)}
+                onSplitChange={(split) => onSplitChange(sim.id, split)}
+                onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+              />
+            {/each}
+
+            {#if done.length > 0}
+              {@const expanded = showDone[period.id] ?? true}
+              <div class="mt-2 border-t border-slate-200 pt-2">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded px-1 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
+                  on:click={() => (showDone = { ...showDone, [period.id]: !expanded })}
+                  data-testid="period-toggle-done"
+                  data-period-id={period.id}
+                  aria-expanded={expanded}
+                >
+                  <span>{expanded ? '▼' : '▶'} Done</span>
+                  <span class="text-slate-500">{done.length}</span>
+                </button>
+                {#if expanded}
+                  <div
+                    class="mt-2 space-y-2"
+                    data-testid="period-done-section"
+                    data-period-id={period.id}
+                  >
+                    {#each done as sim (sim.id)}
+                      {@const assignment = findAssignment(sim.id)}
+                      <SimulationCard
+                        {sim}
+                        {models}
+                        {hpcs}
+                        hpcId={hpc.id}
+                        periodId={period.id}
+                        {assignment}
+                        onAssignToPeriod={(targetHpcId, targetPeriodId) =>
+                          onAssignToPeriod(sim.id, targetHpcId, targetPeriodId)}
+                        onUnassign={() => onUnassign(sim.id)}
+                        onSplitChange={(split) => onSplitChange(sim.id, split)}
+                        onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
+                      />
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
           {/if}
         </div>
-      {/if}
-    {/if}
-  </div>
+      </div>
+    {/each}
+  {/if}
 </section>

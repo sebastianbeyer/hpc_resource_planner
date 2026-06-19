@@ -33,7 +33,7 @@ function sim(overrides: Partial<Simulation> = {}): Simulation {
 describe('UnassignedTray', () => {
   it('renders the empty state when sims is empty', () => {
     const { getByTestId, queryByTestId } = render(UnassignedTray, {
-      props: { sims: [], models, hpcs, onAssign: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
+      props: { sims: [], models, hpcs, onAssignToPeriod: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
     });
     expect(getByTestId('tray-empty').textContent).toMatch(/All sims assigned/);
     expect(queryByTestId('simulation-card')).toBeNull();
@@ -45,7 +45,7 @@ describe('UnassignedTray', () => {
       sim({ id: 's2', name: 'two' })
     ];
     const { getAllByTestId, queryByTestId } = render(UnassignedTray, {
-      props: { sims, models, hpcs, onAssign: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
+      props: { sims, models, hpcs, onAssignToPeriod: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
     });
     expect(queryByTestId('tray-empty')).toBeNull();
     expect(getAllByTestId('simulation-card').length).toBe(2);
@@ -54,7 +54,7 @@ describe('UnassignedTray', () => {
   it('shows the unassigned count in the header', () => {
     const sims = [sim({ id: 's1' }), sim({ id: 's2' }), sim({ id: 's3' })];
     const { getByTestId } = render(UnassignedTray, {
-      props: { sims, models, hpcs, onAssign: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
+      props: { sims, models, hpcs, onAssignToPeriod: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
     });
     const tray = getByTestId('unassigned-tray');
     expect(tray.textContent).toMatch(/3/);
@@ -67,7 +67,7 @@ describe('UnassignedTray', () => {
       sim({ id: 's3', name: 'done-two', completed: true })
     ];
     const { getByTestId, queryByTestId, container } = render(UnassignedTray, {
-      props: { sims, models, hpcs, onAssign: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
+      props: { sims, models, hpcs, onAssignToPeriod: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
     });
     const toggle = getByTestId('tray-toggle-done');
     expect(toggle.textContent).toMatch(/Done/);
@@ -83,7 +83,7 @@ describe('UnassignedTray', () => {
   it('does not render the Done toggle when no sims are completed', () => {
     const sims = [sim({ id: 's1' }), sim({ id: 's2' })];
     const { queryByTestId } = render(UnassignedTray, {
-      props: { sims, models, hpcs, onAssign: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
+      props: { sims, models, hpcs, onAssignToPeriod: vi.fn(), onUnassign: vi.fn(), onCompletedChange: vi.fn() }
     });
     expect(queryByTestId('tray-toggle-done')).toBeNull();
   });
@@ -91,7 +91,7 @@ describe('UnassignedTray', () => {
   it('fires onUnassign when a sim id is dropped on the tray', () => {
     const onUnassign = vi.fn();
     const { getByTestId } = render(UnassignedTray, {
-      props: { sims: [], models, hpcs, onAssign: vi.fn(), onUnassign, onCompletedChange: vi.fn() }
+      props: { sims: [], models, hpcs, onAssignToPeriod: vi.fn(), onUnassign, onCompletedChange: vi.fn() }
     });
     const tray = getByTestId('unassigned-tray');
     const data: Record<string, string> = {

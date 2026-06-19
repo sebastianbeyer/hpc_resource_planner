@@ -1,6 +1,6 @@
 <script lang="ts">
   import { simulationCost } from '$lib/calc/cost';
-  import type { Assignment, Hpc, Model, Simulation } from '$lib/types';
+  import type { Assignment, Hpc, Model, Period, Simulation } from '$lib/types';
   import { formatHours, formatStorageTb } from '$lib/util/format';
   import PeriodSplitEditor from './PeriodSplitEditor.svelte';
 
@@ -10,8 +10,13 @@
   /** If provided, this card is rendered inside an HPC lane and shows
    *  assignment-related controls (period split, unassign, etc.). */
   export let hpcId: string | undefined = undefined;
+  /** When set, the card's resource share reflects this specific period's slice
+   *  of the assignment (used by the per-period lane sections). */
+  export let periodId: string | undefined = undefined;
   export let assignment: Assignment | undefined = undefined;
-  export let onAssign: ((hpcId: string) => void) | undefined = undefined;
+  export let onAssignToPeriod:
+    | ((hpcId: string, periodId: string) => void)
+    | undefined = undefined;
   export let onUnassign: (() => void) | undefined = undefined;
   export let onSplitChange: ((split: Record<string, number>) => void) | undefined = undefined;
   export let onCompletedChange: ((completed: boolean) => void) | undefined = undefined;
@@ -23,9 +28,16 @@
   $: model = models.find((m) => m.id === sim.modelId);
   $: hpc = hpcId ? hpcs.find((h) => h.id === hpcId) : undefined;
   $: periods = hpc?.periods ?? [];
-  $: moveTargets = hpcId ? hpcs.filter((h) => h.id !== hpcId) : [];
   $: hasPlanActions = hpcId !== undefined && assignment !== undefined;
   $: draggable = !sim.completed;
+
+  type Target = { hpc: Hpc; period: Period };
+  $: assignTargets = hpcs.flatMap((h) =>
+    h.periods.map((p) => ({ hpc: h, period: p }))
+  );
+  $: moveTargets = assignTargets.filter(
+    (t) => !(t.hpc.id === hpcId && t.period.id === periodId)
+  );
 
   const percentFmt = new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 1,
@@ -50,6 +62,9 @@
       if (f === undefined || f === 0) continue;
       parts.push(`${p.label || p.id} ${Math.round(f * 100)}%`);
     }
+    // Hide the badge when the assignment lives in a single period (the
+    // unsplit default) — only show it for actual splits.
+    if (parts.length <= 1) return '';
     return parts.join(' / ');
   }
 
@@ -62,23 +77,30 @@
     return `${percentFmt.format((used / budget) * 100)}%`;
   }
 
-  function computeAppliedFraction(a: Assignment | undefined, targetHpc: Hpc): number {
-    if (!a) return targetHpc.periods.length > 0 ? 1 : 0;
-    const periodIds = new Set(targetHpc.periods.map((p) => p.id));
-    let sum = 0;
-    for (const [periodId, fraction] of Object.entries(a.periodSplit)) {
-      if (periodIds.has(periodId)) sum += fraction || 0;
-    }
-    return sum;
-  }
-
   $: resourceShare = (() => {
     if (!hpcId || !hpc || !model) return undefined as ResourceShare | undefined;
 
     const cost = simulationCost(sim, model, hpcId);
-    const computeFraction = computeAppliedFraction(assignment, hpc);
-    const cpuBudget = hpc.periods.reduce((acc, p) => acc + p.cpuHoursBudget, 0);
-    const gpuBudget = hpc.periods.reduce((acc, p) => acc + p.gpuHoursBudget, 0);
+
+    // Per-period view: use this period's slice only.
+    // Otherwise: full assignment (sum of all periods, capped at 1 by normalisation).
+    const computeFraction = (() => {
+      if (periodId) return assignment?.periodSplit[periodId] ?? 0;
+      if (!assignment) return periods.length > 0 ? 1 : 0;
+      const periodIds = new Set(periods.map((p) => p.id));
+      let sum = 0;
+      for (const [pid, f] of Object.entries(assignment.periodSplit)) {
+        if (periodIds.has(pid)) sum += f || 0;
+      }
+      return sum;
+    })();
+
+    const cpuBudget = periodId
+      ? hpc.periods.find((p) => p.id === periodId)?.cpuHoursBudget ?? 0
+      : hpc.periods.reduce((acc, p) => acc + p.cpuHoursBudget, 0);
+    const gpuBudget = periodId
+      ? hpc.periods.find((p) => p.id === periodId)?.gpuHoursBudget ?? 0
+      : hpc.periods.reduce((acc, p) => acc + p.gpuHoursBudget, 0);
     const cpuHours = cost.cpuHours * computeFraction;
     const gpuHours = cost.gpuHours * computeFraction;
 
@@ -103,9 +125,9 @@
     onUnassign?.();
   }
 
-  function moveFromMenu(targetHpcId: string) {
+  function moveFromMenu(targetHpcId: string, targetPeriodId: string) {
     showActionMenu = false;
-    onAssign?.(targetHpcId);
+    onAssignToPeriod?.(targetHpcId, targetPeriodId);
   }
 
   function onDragStart(e: DragEvent) {
@@ -224,7 +246,7 @@
           </button>
           {#if showActionMenu}
             <ul
-              class="absolute right-0 z-10 mt-1 w-48 rounded border border-slate-300 bg-white p-1 shadow-lg"
+              class="absolute right-0 z-10 mt-1 w-56 rounded border border-slate-300 bg-white p-1 shadow-lg"
               data-testid="card-actions-menu"
               role="menu"
             >
@@ -259,17 +281,18 @@
                 >
                   Move to
                 </li>
-                {#each moveTargets as h (h.id)}
+                {#each moveTargets as t (`${t.hpc.id}:${t.period.id}`)}
                   <li role="none">
                     <button
                       type="button"
                       role="menuitem"
                       class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
-                      on:click={() => moveFromMenu(h.id)}
+                      on:click={() => moveFromMenu(t.hpc.id, t.period.id)}
                       data-testid="move-to-option"
-                      data-target-hpc-id={h.id}
+                      data-target-hpc-id={t.hpc.id}
+                      data-target-period-id={t.period.id}
                     >
-                      {h.name || h.id}
+                      {t.hpc.name || t.hpc.id} · {t.period.label || t.period.id}
                     </button>
                   </li>
                 {/each}
@@ -284,20 +307,20 @@
             class="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
             on:click={() => (showAssignMenu = !showAssignMenu)}
             data-testid="assign-to"
-            disabled={hpcs.length === 0}
+            disabled={assignTargets.length === 0}
             aria-haspopup="menu"
             aria-expanded={showAssignMenu}
-            aria-label={`Assign ${sim.name || 'simulation'} to an HPC`}
+            aria-label={`Assign ${sim.name || 'simulation'} to an HPC period`}
           >
             Assign to ▾
           </button>
           {#if showAssignMenu}
             <ul
-              class="absolute right-0 z-10 mt-1 w-44 rounded border border-slate-300 bg-white p-1 shadow-lg"
+              class="absolute right-0 z-10 mt-1 w-52 rounded border border-slate-300 bg-white p-1 shadow-lg"
               data-testid="assign-menu"
               role="menu"
             >
-              {#each hpcs as h (h.id)}
+              {#each assignTargets as t (`${t.hpc.id}:${t.period.id}`)}
                 <li role="none">
                   <button
                     type="button"
@@ -305,12 +328,13 @@
                     class="block w-full rounded px-2 py-1 text-left text-[11px] text-slate-700 hover:bg-slate-100"
                     on:click={() => {
                       showAssignMenu = false;
-                      onAssign?.(h.id);
+                      onAssignToPeriod?.(t.hpc.id, t.period.id);
                     }}
                     data-testid="assign-option"
-                    data-target-hpc-id={h.id}
+                    data-target-hpc-id={t.hpc.id}
+                    data-target-period-id={t.period.id}
                   >
-                    {h.name || h.id}
+                    {t.hpc.name || t.hpc.id} · {t.period.label || t.period.id}
                   </button>
                 </li>
               {/each}

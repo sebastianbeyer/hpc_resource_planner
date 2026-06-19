@@ -69,16 +69,16 @@ describe('SimulationCard', () => {
     expect(getByTestId('package-badge').textContent).toMatch(/pkg-A/);
   });
 
-  it('in unassigned tray, shows an Assign-to button and fires onAssign', async () => {
-    const onAssign = vi.fn();
+  it('in unassigned tray, shows an Assign-to button and fires onAssignToPeriod with (hpcId, periodId)', async () => {
+    const onAssignToPeriod = vi.fn();
     const { getByTestId, getAllByTestId } = render(SimulationCard, {
-      props: { sim: sim(), models, hpcs, onAssign }
+      props: { sim: sim(), models, hpcs, onAssignToPeriod }
     });
     await fireEvent.click(getByTestId('assign-to'));
     const opts = getAllByTestId('assign-option');
     expect(opts.length).toBe(1);
     await fireEvent.click(opts[0]);
-    expect(onAssign).toHaveBeenCalledWith('h1');
+    expect(onAssignToPeriod).toHaveBeenCalledWith('h1', 'p1');
   });
 
   it('in an HPC lane, shows Unassign and fires onUnassign', async () => {
@@ -89,7 +89,7 @@ describe('SimulationCard', () => {
       periodSplit: { p1: 1 }
     };
     const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment, onUnassign }
+      props: { sim: sim(), models, hpcs, hpcId: 'h1', periodId: 'p1', assignment, onUnassign }
     });
     await fireEvent.click(getByTestId('card-actions'));
     await fireEvent.click(getByTestId('unassign'));
@@ -103,7 +103,7 @@ describe('SimulationCard', () => {
       periodSplit: { p1: 1 }
     };
     const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment }
+      props: { sim: sim(), models, hpcs, hpcId: 'h1', periodId: 'p1', assignment }
     });
 
     await fireEvent.click(getByTestId('card-actions'));
@@ -112,44 +112,74 @@ describe('SimulationCard', () => {
     expect(getByTestId('period-split-editor')).toBeTruthy();
   });
 
-  it('moves to another HPC from the actions menu', async () => {
-    const onAssign = vi.fn();
+  it('moves to another HPC period from the actions menu', async () => {
+    const onAssignToPeriod = vi.fn();
     const assignment: Assignment = {
       simulationId: 's1',
       hpcId: 'h1',
       periodSplit: { p1: 1 }
     };
-    const { getByTestId } = render(SimulationCard, {
+    const { getByTestId, getAllByTestId } = render(SimulationCard, {
       props: {
         sim: sim(),
         models,
         hpcs: hpcsWithMoveTarget,
         hpcId: 'h1',
+        periodId: 'p1',
         assignment,
-        onAssign
+        onAssignToPeriod
       }
     });
 
     await fireEvent.click(getByTestId('card-actions'));
-    await fireEvent.click(getByTestId('move-to-option'));
-
-    expect(onAssign).toHaveBeenCalledWith('h2');
+    const opts = getAllByTestId('move-to-option');
+    // Should list every (hpc, period) except the current one
+    expect(opts.length).toBe(1);
+    await fireEvent.click(opts[0]);
+    expect(onAssignToPeriod).toHaveBeenCalledWith('h2', 'p2');
   });
 
-  it('renders a compact split string for the assignment', () => {
+  it('hides the compact split string when the sim lives in a single period', () => {
     const assignment: Assignment = {
       simulationId: 's1',
       hpcId: 'h1',
       periodSplit: { p1: 1 }
     };
-    const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment }
+    const { queryByTestId } = render(SimulationCard, {
+      props: { sim: sim(), models, hpcs, hpcId: 'h1', periodId: 'p1', assignment }
     });
-    expect(getByTestId('card-split').textContent).toMatch(/2026/);
-    expect(getByTestId('card-split').textContent).toMatch(/100%/);
+    expect(queryByTestId('card-split')).toBeNull();
   });
 
-  it('renders absolute and percent resource usage for the assigned HPC', () => {
+  it('renders a compact split string when the sim is actually split across periods', () => {
+    const hpcWithTwoPeriods: Hpc = {
+      ...hpcs[0],
+      periods: [
+        { id: 'p1', label: '2026', cpuHoursBudget: 1200, gpuHoursBudget: 120 },
+        { id: 'p2', label: '2027', cpuHoursBudget: 1200, gpuHoursBudget: 120 }
+      ]
+    };
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 0.6, p2: 0.4 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: {
+        sim: sim(),
+        models,
+        hpcs: [hpcWithTwoPeriods],
+        hpcId: 'h1',
+        periodId: 'p1',
+        assignment
+      }
+    });
+    const text = getByTestId('card-split').textContent ?? '';
+    expect(text).toMatch(/2026 60%/);
+    expect(text).toMatch(/2027 40%/);
+  });
+
+  it('shows resource usage scoped to its period when periodId is set', () => {
     const assignment: Assignment = {
       simulationId: 's1',
       hpcId: 'h1',
@@ -161,6 +191,7 @@ describe('SimulationCard', () => {
         models,
         hpcs,
         hpcId: 'h1',
+        periodId: 'p1',
         assignment
       }
     });
@@ -175,6 +206,34 @@ describe('SimulationCard', () => {
     expect(getByTestId('card-storage-share').textContent).toContain('(6%)');
   });
 
+  it('scales CPU/GPU share by the period fraction when split across periods', () => {
+    const hpcWithTwoPeriods: Hpc = {
+      ...hpcs[0],
+      periods: [
+        { id: 'p1', label: '2026', cpuHoursBudget: 1200, gpuHoursBudget: 120 },
+        { id: 'p2', label: '2027', cpuHoursBudget: 1200, gpuHoursBudget: 120 }
+      ]
+    };
+    const assignment: Assignment = {
+      simulationId: 's1',
+      hpcId: 'h1',
+      periodSplit: { p1: 0.5, p2: 0.5 }
+    };
+    const { getByTestId } = render(SimulationCard, {
+      props: {
+        sim: sim({ overheadMultiplier: 1 }),
+        models,
+        hpcs: [hpcWithTwoPeriods],
+        hpcId: 'h1',
+        periodId: 'p1',
+        assignment
+      }
+    });
+    // Half of 120 CPU h = 60 H on p1
+    expect(getByTestId('card-cpu-share').textContent).toContain('CPU: 60 H');
+    expect(getByTestId('card-cpu-share').textContent).toContain('(5%)');
+  });
+
   it('hides the CPU and GPU spans when the sim has zero compute', () => {
     const assignment: Assignment = {
       simulationId: 's1',
@@ -187,6 +246,7 @@ describe('SimulationCard', () => {
         models,
         hpcs,
         hpcId: 'h1',
+        periodId: 'p1',
         assignment
       }
     });
@@ -194,20 +254,6 @@ describe('SimulationCard', () => {
     expect(queryByTestId('card-cpu-share')).toBeNull();
     expect(queryByTestId('card-gpu-share')).toBeNull();
     expect(getByTestId('card-storage-share').textContent).toContain('Storage');
-  });
-
-  it('renders the compact split inline with the meta line', () => {
-    const assignment: Assignment = {
-      simulationId: 's1',
-      hpcId: 'h1',
-      periodSplit: { p1: 1 }
-    };
-    const { getByTestId } = render(SimulationCard, {
-      props: { sim: sim(), models, hpcs, hpcId: 'h1', assignment }
-    });
-    const split = getByTestId('card-split');
-    expect(split.textContent).toMatch(/2026/);
-    expect(split.textContent).toMatch(/100%/);
   });
 
   it('toggles the completed flag through the inline checkbox', async () => {

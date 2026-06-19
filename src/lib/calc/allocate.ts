@@ -78,23 +78,3 @@ export function normaliseSplit(periodSplit: Record<string, number>): {
 
   return { split, valid };
 }
-
-/**
- * Build an even split across the first `n` periodIds (or all of them if
- * `n` exceeds the list length). Each chosen period gets `1/k` where `k` is
- * the actual number used.
- *
- * Edge cases:
- *   - n <= 0           → {}
- *   - empty periodIds  → {}
- */
-export function autoSpread(periodIds: string[], n: number): Record<string, number> {
-  if (n <= 0 || periodIds.length === 0) return {};
-  const k = Math.min(n, periodIds.length);
-  const fraction = 1 / k;
-  const out: Record<string, number> = {};
-  for (let i = 0; i < k; i++) {
-    out[periodIds[i]] = fraction;
-  }
-  return out;
-}

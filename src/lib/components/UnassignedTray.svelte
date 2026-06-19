@@ -6,7 +6,7 @@
   export let sims: Simulation[];
   export let models: Model[];
   export let hpcs: Hpc[];
-  export let onAssign: (simId: string, hpcId: string) => void;
+  export let onAssignToPeriod: (simId: string, hpcId: string, periodId: string) => void;
   export let onUnassign: (simId: string) => void;
   export let onCompletedChange: (simId: string, completed: boolean) => void;
 
@@ -74,7 +74,7 @@
           {sim}
           {models}
           {hpcs}
-          onAssign={(hpcId) => onAssign(sim.id, hpcId)}
+          onAssignToPeriod={(hpcId, periodId) => onAssignToPeriod(sim.id, hpcId, periodId)}
           onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
         />
       {/each}
@@ -102,7 +102,7 @@
                 {sim}
                 {models}
                 {hpcs}
-                onAssign={(hpcId) => onAssign(sim.id, hpcId)}
+                onAssignToPeriod={(hpcId, periodId) => onAssignToPeriod(sim.id, hpcId, periodId)}
                 onCompletedChange={(completed) => onCompletedChange(sim.id, completed)}
               />
             {/each}
