@@ -44,7 +44,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <aside
-  class="flex w-72 flex-shrink-0 flex-col rounded-lg border bg-slate-100 p-3"
+  class="flex w-full flex-col rounded-lg border bg-slate-100 p-3"
   class:border-slate-300={!dragOver}
   class:border-sky-500={dragOver}
   class:ring-2={dragOver}
@@ -66,7 +66,9 @@
       <EmptyState title="All sims assigned" message="Drop a card here to unassign it." />
     </div>
   {:else}
-    <div class="space-y-2">
+    <div
+      class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+    >
       {#each pendingSims as sim (sim.id)}
         <SimulationCard
           {sim}
@@ -91,7 +93,10 @@
           <span class="text-slate-500">{doneSims.length}</span>
         </button>
         {#if showDone}
-          <div class="mt-2 space-y-2" data-testid="tray-done-section">
+          <div
+            class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+            data-testid="tray-done-section"
+          >
             {#each doneSims as sim (sim.id)}
               <SimulationCard
                 {sim}

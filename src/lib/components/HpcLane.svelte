@@ -65,7 +65,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <section
-  class="flex w-80 flex-shrink-0 flex-col rounded-lg border bg-white p-3 shadow-sm"
+  class="flex min-w-[18rem] flex-1 basis-0 flex-col rounded-lg border bg-white p-3 shadow-sm"
   class:border-slate-300={!dragOver}
   class:border-sky-500={dragOver}
   class:ring-2={dragOver}

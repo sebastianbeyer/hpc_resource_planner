@@ -24,6 +24,13 @@ const PALETTE: { active: string; completed: string }[] = [
   { active: 'bg-purple-500', completed: 'bg-purple-700' }
 ];
 
+// Stable color overrides keyed by model name (case-insensitive). Lets the
+// well-known climate models keep a recognizable color regardless of the
+// random id they were created with.
+const NAME_OVERRIDES: Record<string, { active: string; completed: string }> = {
+  icon: { active: 'bg-purple-500', completed: 'bg-purple-700' }
+};
+
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
@@ -32,7 +39,14 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-export function modelColor(modelId: string, completed: boolean): string {
-  const entry = PALETTE[hash(modelId) % PALETTE.length];
+export function modelColor(
+  modelId: string,
+  completed: boolean,
+  modelName?: string
+): string {
+  const override = modelName
+    ? NAME_OVERRIDES[modelName.trim().toLowerCase()]
+    : undefined;
+  const entry = override ?? PALETTE[hash(modelId) % PALETTE.length];
   return completed ? entry.completed : entry.active;
 }

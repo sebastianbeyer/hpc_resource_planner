@@ -73,7 +73,7 @@
     >
       {#each segments as seg (seg.simulationId)}
         <div
-          class="h-full {modelColor(seg.modelId, seg.completed)} transition-all"
+          class="h-full {modelColor(seg.modelId, seg.completed, seg.modelName)} transition-all"
           style="width: {(seg.value / budget) * 100}%"
           title={`${seg.simulationName} — ${fmtValue(seg.value)} (${seg.modelName})${seg.completed ? ' · completed' : ''}`}
           data-testid="meter-segment"

@@ -93,7 +93,7 @@
       />
     </div>
   {:else}
-    <div class="flex gap-4 overflow-x-auto pb-4" data-testid="plan-board">
+    <div class="flex flex-col gap-4" data-testid="plan-board">
       <UnassignedTray
         sims={$unassigned}
         models={$modelsStore}
@@ -102,20 +102,22 @@
         onUnassign={unassign}
         onCompletedChange={setCompleted}
       />
-      {#each $hpcsStore as hpc (hpc.id)}
-        <HpcLane
-          {hpc}
-          sims={$assignedByHpc[hpc.id] ?? []}
-          models={$modelsStore}
-          hpcs={$hpcsStore}
-          assignments={$assignmentsStore}
-          rollup={$rollupStore[hpc.id]}
-          onAssign={assign}
-          onUnassign={unassign}
-          onSplitChange={setSplit}
-          onCompletedChange={setCompleted}
-        />
-      {/each}
+      <div class="flex gap-4 overflow-x-auto pb-4" data-testid="plan-lanes">
+        {#each $hpcsStore as hpc (hpc.id)}
+          <HpcLane
+            {hpc}
+            sims={$assignedByHpc[hpc.id] ?? []}
+            models={$modelsStore}
+            hpcs={$hpcsStore}
+            assignments={$assignmentsStore}
+            rollup={$rollupStore[hpc.id]}
+            onAssign={assign}
+            onUnassign={unassign}
+            onSplitChange={setSplit}
+            onCompletedChange={setCompleted}
+          />
+        {/each}
+      </div>
     </div>
   {/if}
 </div>
