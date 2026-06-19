@@ -1,9 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { page } from '$app/stores';
   import ImportExportModal from './ImportExportModal.svelte';
 
-  type Tab = { href: string; label: string };
+  type TabHref = '/hpcs' | '/models' | '/simulations' | '/plan';
+  type Tab = { href: TabHref; label: string };
 
   const tabs: Tab[] = [
     { href: '/hpcs', label: 'HPC Resources' },
@@ -12,11 +14,14 @@
     { href: '/plan', label: 'Plan' }
   ];
 
-  $: pathname = $page.url.pathname;
+  $: routeId = $page.route.id ?? '/';
 
-  function isActive(href: string): boolean {
-    if (href === '/') return pathname === '/';
-    return pathname === href || pathname.startsWith(`${href}/`);
+  function isActive(href: TabHref): boolean {
+    return routeId === href || routeId.startsWith(`${href}/`);
+  }
+
+  function isTabHref(value: string): value is TabHref {
+    return tabs.some((tab) => tab.href === value);
   }
 
   // Match the active tab href for the mobile <select>; falls back to /hpcs.
@@ -24,8 +29,8 @@
 
   function handleMobileChange(event: Event) {
     const target = event.currentTarget as HTMLSelectElement;
-    if (target.value && target.value !== pathname) {
-      void goto(target.value);
+    if (isTabHref(target.value) && target.value !== routeId) {
+      void goto(resolve(target.value));
     }
   }
 
@@ -49,7 +54,7 @@
     {#each tabs as tab}
       <li>
         <a
-          href={tab.href}
+          href={resolve(tab.href)}
           class="inline-block rounded px-3 py-2 text-sm font-medium transition-colors"
           class:bg-slate-900={isActive(tab.href)}
           class:text-white={isActive(tab.href)}
