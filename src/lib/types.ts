@@ -15,14 +15,15 @@ export type Period = {
 export type ModelCost = {
   cpuHoursPerSimMonth: number;
   gpuHoursPerSimMonth: number;
-  storageTbPerSimMonthByPortfolio: Record<string, number>;
 };
 
 export type Model = {
   id: string;
   name: string;
-  // costs[resolution][hpcId] = ModelCost
+  // costs[resolution][hpcId] = compute cost for that HPC
   costs: Record<string, Record<string, ModelCost>>;
+  // storageTbPerSimMonthByResolution[resolution][portfolio] = TB / sim-month
+  storageTbPerSimMonthByResolution: Record<string, Record<string, number>>;
 };
 
 export type Simulation = {
@@ -32,10 +33,11 @@ export type Simulation = {
   resolution: string;
   lengthYears: number;
   ensembles: number;
-  dataPortfolio: string;          // key into Model.costs storage table
+  dataPortfolio: string;          // key into Model.storageTbPerSimMonthByResolution
   packageLabel?: string;          // visual grouping only
   overheadMultiplier: number;     // e.g. 1.15 = +15% for reruns
   locked: boolean;
+  completed: boolean;             // already completed; rendered as consumed in meters
   pinnedHpcId?: string;           // required when locked
   zeroCompute?: boolean;          // for historical/already-done data
 };

@@ -8,7 +8,7 @@ import type {
   Simulation
 } from './types';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 /**
  * An empty-but-valid state with seeded shared vocabularies.
@@ -119,22 +119,30 @@ function validateModelCost(value: unknown, path: string): ModelCost {
     o.gpuHoursPerSimMonth,
     `${path}.gpuHoursPerSimMonth`
   );
-  const storageRaw = ensureObject(
-    o.storageTbPerSimMonthByPortfolio,
-    `${path}.storageTbPerSimMonthByPortfolio`
-  );
-  const storageTbPerSimMonthByPortfolio: Record<string, number> = {};
-  for (const [k, v] of Object.entries(storageRaw)) {
-    storageTbPerSimMonthByPortfolio[k] = ensureNonNegativeNumber(
-      v,
-      `${path}.storageTbPerSimMonthByPortfolio.${k}`
-    );
-  }
   return {
     cpuHoursPerSimMonth,
-    gpuHoursPerSimMonth,
-    storageTbPerSimMonthByPortfolio
+    gpuHoursPerSimMonth
   };
+}
+
+function validateStorageRates(
+  value: unknown,
+  path: string
+): Record<string, Record<string, number>> {
+  const raw = ensureObject(value, path);
+  const storageTbPerSimMonthByResolution: Record<string, Record<string, number>> = {};
+  for (const [resolution, byPortfolioRaw] of Object.entries(raw)) {
+    const byPortfolioObj = ensureObject(byPortfolioRaw, `${path}.${resolution}`);
+    const byPortfolio: Record<string, number> = {};
+    for (const [portfolio, rate] of Object.entries(byPortfolioObj)) {
+      byPortfolio[portfolio] = ensureNonNegativeNumber(
+        rate,
+        `${path}.${resolution}.${portfolio}`
+      );
+    }
+    storageTbPerSimMonthByResolution[resolution] = byPortfolio;
+  }
+  return storageTbPerSimMonthByResolution;
 }
 
 function validateModel(value: unknown, path: string): Model {
@@ -151,7 +159,11 @@ function validateModel(value: unknown, path: string): Model {
     }
     costs[resolution] = inner;
   }
-  return { id, name, costs };
+  const storageTbPerSimMonthByResolution = validateStorageRates(
+    o.storageTbPerSimMonthByResolution,
+    `${path}.storageTbPerSimMonthByResolution`
+  );
+  return { id, name, costs, storageTbPerSimMonthByResolution };
 }
 
 function validateSimulation(value: unknown, path: string): Simulation {
@@ -171,6 +183,7 @@ function validateSimulation(value: unknown, path: string): Simulation {
     fail(`${path}.overheadMultiplier`, `expected non-negative number, got ${overheadMultiplier}`);
   }
   const locked = ensureBoolean(o.locked, `${path}.locked`);
+  const completed = ensureBoolean(o.completed, `${path}.completed`);
 
   const sim: Simulation = {
     id,
@@ -181,7 +194,8 @@ function validateSimulation(value: unknown, path: string): Simulation {
     ensembles,
     dataPortfolio,
     overheadMultiplier,
-    locked
+    locked,
+    completed
   };
 
   if (o.packageLabel !== undefined) {
@@ -219,6 +233,78 @@ function validateAssignment(value: unknown, path: string): Assignment {
 function validateStringArray(value: unknown, path: string): string[] {
   const arr = ensureArray(value, path);
   return arr.map((s, i) => ensureString(s, `${path}[${i}]`));
+}
+
+// ---------- migrations ----------
+
+function migrateV1toV2(state: Record<string, unknown>): Record<string, unknown> {
+  const models = Array.isArray(state.models)
+    ? state.models.map((modelRaw) => {
+        if (!isObject(modelRaw)) return modelRaw;
+
+        const storageTbPerSimMonthByResolution: Record<
+          string,
+          Record<string, unknown>
+        > = {};
+
+        if (isObject(modelRaw.storageTbPerSimMonthByResolution)) {
+          for (const [resolution, byPortfolioRaw] of Object.entries(
+            modelRaw.storageTbPerSimMonthByResolution
+          )) {
+            if (isObject(byPortfolioRaw)) {
+              storageTbPerSimMonthByResolution[resolution] = { ...byPortfolioRaw };
+            }
+          }
+        }
+
+        if (isObject(modelRaw.costs)) {
+          for (const [resolution, byHpcRaw] of Object.entries(modelRaw.costs)) {
+            if (!isObject(byHpcRaw)) continue;
+
+            const byPortfolio = {
+              ...(storageTbPerSimMonthByResolution[resolution] ?? {})
+            };
+            for (const cellRaw of Object.values(byHpcRaw)) {
+              if (!isObject(cellRaw)) continue;
+              const storageRaw = cellRaw.storageTbPerSimMonthByPortfolio;
+              if (!isObject(storageRaw)) continue;
+
+              for (const [portfolio, rate] of Object.entries(storageRaw)) {
+                if (!(portfolio in byPortfolio)) byPortfolio[portfolio] = rate;
+              }
+            }
+            storageTbPerSimMonthByResolution[resolution] = byPortfolio;
+          }
+        }
+
+        return {
+          ...modelRaw,
+          storageTbPerSimMonthByResolution
+        };
+      })
+    : state.models;
+
+  return {
+    ...state,
+    schemaVersion: 2,
+    models
+  };
+}
+
+function migrateV2toV3(state: Record<string, unknown>): Record<string, unknown> {
+  const simulations = Array.isArray(state.simulations)
+    ? state.simulations.map((simRaw) =>
+        isObject(simRaw) && !('completed' in simRaw)
+          ? { ...simRaw, completed: false }
+          : simRaw
+      )
+    : state.simulations;
+
+  return {
+    ...state,
+    schemaVersion: 3,
+    simulations
+  };
 }
 
 // ---------- top-level ----------
@@ -280,8 +366,9 @@ export function validateState(input: unknown): AppState {
 
 /**
  * Migrate an unknown state blob to the current schema version, then validate.
- * For v1 this is just a validation pass; future versions can be slotted into
- * the switch below.
+ * v1 stored data-portfolio storage rates inside each HPC-specific compute
+ * cell; v2 stores them once per model resolution because storage is
+ * HPC-independent. v3 adds the per-simulation completed flag.
  */
 export function migrate(state: unknown): AppState {
   // If schemaVersion is missing entirely, assume v1.
@@ -308,7 +395,12 @@ export function migrate(state: unknown): AppState {
   while ((current.schemaVersion as number) < CURRENT_SCHEMA_VERSION) {
     const v = current.schemaVersion as number;
     switch (v) {
-      // case 1: current = migrateV1toV2(current); break;
+      case 1:
+        current = migrateV1toV2(current);
+        break;
+      case 2:
+        current = migrateV2toV3(current);
+        break;
       default:
         throw new Error(
           `Cannot migrate from schemaVersion ${v}: no migration registered`

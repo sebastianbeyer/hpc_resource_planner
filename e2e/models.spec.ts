@@ -51,6 +51,10 @@ test('add HPC + model + cost cell, reload, persist', async ({ page }) => {
     .first();
   await expect(cell).toBeVisible();
   await cell.getByTestId('cell-cpu').fill('12345');
+  await modelCard
+    .locator('[data-testid="storage-rates"][data-resolution="tco79"]')
+    .locator('[data-testid="cell-storage"][data-portfolio="standard"]')
+    .fill('0.5');
 
   // Defocus + wait for autosave.
   await page.locator('body').click();
@@ -67,4 +71,9 @@ test('add HPC + model + cost cell, reload, persist', async ({ page }) => {
     .locator('[data-testid="cost-cell"][data-resolution="tco79"]')
     .first();
   await expect(restoredCell.getByTestId('cell-cpu')).toHaveValue('12345');
+  await expect(
+    restoredCard
+      .locator('[data-testid="storage-rates"][data-resolution="tco79"]')
+      .locator('[data-testid="cell-storage"][data-portfolio="standard"]')
+  ).toHaveValue('0.5');
 });

@@ -3,23 +3,43 @@ import { simulationCost } from './cost';
 import { allocateAcrossPeriods } from './allocate';
 
 /**
+ * One simulation's contribution to a single meter (CPU/GPU for a period, or
+ * cumulative storage for the HPC). The Plan tab uses these to draw the bar
+ * as a stack of per-sim segments with hover tooltips.
+ */
+export type MeterSegment = {
+  simulationId: string;
+  simulationName: string;
+  modelId: string;
+  modelName: string;
+  value: number;
+  completed: boolean;
+};
+
+/**
  * Per-HPC roll-up of used vs. budget, broken down by period for compute and
  * accumulated wholesale for storage. This is what the Plan tab feeds straight
  * into its budget meters.
  */
 export type HpcRollup = {
   storageUsedTb: number;
+  storageCompletedTb: number;
   storageBudgetTb: number;
   storageOverBudget: boolean;
+  storageSegments: MeterSegment[];
   periods: Record<
     string,
     {
       cpuUsed: number;
+      cpuCompleted: number;
       cpuBudget: number;
       cpuOverBudget: boolean;
+      cpuSegments: MeterSegment[];
       gpuUsed: number;
+      gpuCompleted: number;
       gpuBudget: number;
       gpuOverBudget: boolean;
+      gpuSegments: MeterSegment[];
     }
   >;
 };
@@ -57,17 +77,23 @@ export function rollup(state: AppState): Rollup {
     for (const p of hpc.periods) {
       periods[p.id] = {
         cpuUsed: 0,
+        cpuCompleted: 0,
         cpuBudget: p.cpuHoursBudget,
         cpuOverBudget: false,
+        cpuSegments: [],
         gpuUsed: 0,
+        gpuCompleted: 0,
         gpuBudget: p.gpuHoursBudget,
-        gpuOverBudget: false
+        gpuOverBudget: false,
+        gpuSegments: []
       };
     }
     out[hpc.id] = {
       storageUsedTb: 0,
+      storageCompletedTb: 0,
       storageBudgetTb: hpc.storageBudgetTb,
       storageOverBudget: false,
+      storageSegments: [],
       periods
     };
   }
@@ -106,6 +132,17 @@ export function rollup(state: AppState): Rollup {
 
     // Storage is per-HPC, not period-scoped.
     hpcBucket.storageUsedTb += cost.storageTb;
+    if (sim.completed) hpcBucket.storageCompletedTb += cost.storageTb;
+    if (cost.storageTb > 0) {
+      hpcBucket.storageSegments.push({
+        simulationId: sim.id,
+        simulationName: sim.name,
+        modelId: model.id,
+        modelName: model.name,
+        value: cost.storageTb,
+        completed: sim.completed
+      });
+    }
 
     const perPeriod = allocateAcrossPeriods(
       { cpuHours: cost.cpuHours, gpuHours: cost.gpuHours },
@@ -116,6 +153,30 @@ export function rollup(state: AppState): Rollup {
       if (!periodBucket) continue; // stale period reference — silently ignore
       periodBucket.cpuUsed += compute.cpuHours;
       periodBucket.gpuUsed += compute.gpuHours;
+      if (sim.completed) {
+        periodBucket.cpuCompleted += compute.cpuHours;
+        periodBucket.gpuCompleted += compute.gpuHours;
+      }
+      if (compute.cpuHours > 0) {
+        periodBucket.cpuSegments.push({
+          simulationId: sim.id,
+          simulationName: sim.name,
+          modelId: model.id,
+          modelName: model.name,
+          value: compute.cpuHours,
+          completed: sim.completed
+        });
+      }
+      if (compute.gpuHours > 0) {
+        periodBucket.gpuSegments.push({
+          simulationId: sim.id,
+          simulationName: sim.name,
+          modelId: model.id,
+          modelName: model.name,
+          value: compute.gpuHours,
+          completed: sim.completed
+        });
+      }
     }
   }
 

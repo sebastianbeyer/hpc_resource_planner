@@ -3,7 +3,9 @@ import { render } from '@testing-library/svelte';
 import UnassignedTray from './UnassignedTray.svelte';
 import type { Hpc, Model, Simulation } from '$lib/types';
 
-const models: Model[] = [{ id: 'm1', name: 'IFS', costs: {} }];
+const models: Model[] = [
+  { id: 'm1', name: 'IFS', costs: {}, storageTbPerSimMonthByResolution: {} }
+];
 const hpcs: Hpc[] = [
   {
     id: 'h1',
@@ -24,6 +26,7 @@ function sim(overrides: Partial<Simulation> = {}): Simulation {
     dataPortfolio: 'standard',
     overheadMultiplier: 1.15,
     locked: false,
+    completed: false,
     ...overrides
   };
 }

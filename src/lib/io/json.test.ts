@@ -5,7 +5,7 @@ import type { AppState } from '$lib/types';
 
 function makeFullState(): AppState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3,
     hpcs: [
       {
         id: 'hpc-1',
@@ -25,10 +25,12 @@ function makeFullState(): AppState {
           tco399: {
             'hpc-1': {
               cpuHoursPerSimMonth: 100,
-              gpuHoursPerSimMonth: 0,
-              storageTbPerSimMonthByPortfolio: { standard: 0.5 }
+              gpuHoursPerSimMonth: 0
             }
           }
+        },
+        storageTbPerSimMonthByResolution: {
+          tco399: { standard: 0.5 }
         }
       }
     ],
@@ -42,7 +44,8 @@ function makeFullState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false
+        locked: false,
+        completed: false
       }
     ],
     assignments: [
@@ -114,16 +117,30 @@ describe('importState error handling', () => {
 });
 
 describe('importState migration', () => {
-  it('accepts payload with schemaVersion: 1 (current)', () => {
-    const s = { ...defaultState(), schemaVersion: 1 };
+  it('accepts payload with schemaVersion: 3 (current)', () => {
+    const s = { ...defaultState(), schemaVersion: 3 };
     const out = importState(JSON.stringify(s));
-    expect(out.schemaVersion).toBe(1);
+    expect(out.schemaVersion).toBe(3);
+  });
+
+  it('migrates payload with schemaVersion: 1', () => {
+    const s = {
+      schemaVersion: 1,
+      hpcs: [],
+      models: [],
+      simulations: [],
+      assignments: [],
+      dataPortfolios: [],
+      resolutions: []
+    };
+    const out = importState(JSON.stringify(s));
+    expect(out.schemaVersion).toBe(3);
   });
 
   it('treats missing schemaVersion as v1 and succeeds via migrate', () => {
     const s = defaultState() as Partial<AppState>;
     delete (s as Record<string, unknown>).schemaVersion;
     const out = importState(JSON.stringify(s));
-    expect(out.schemaVersion).toBe(1);
+    expect(out.schemaVersion).toBe(3);
   });
 });

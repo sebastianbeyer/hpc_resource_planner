@@ -37,22 +37,23 @@ function buildState(): AppState {
           tco79: {
             'hpc-a': {
               cpuHoursPerSimMonth: 10,
-              gpuHoursPerSimMonth: 1,
-              storageTbPerSimMonthByPortfolio: { minimal: 0.1 }
+              gpuHoursPerSimMonth: 1
             },
             'hpc-b': {
               cpuHoursPerSimMonth: 20,
-              gpuHoursPerSimMonth: 2,
-              storageTbPerSimMonthByPortfolio: { minimal: 0.2 }
+              gpuHoursPerSimMonth: 2
             }
           },
           tco399: {
             'hpc-a': {
               cpuHoursPerSimMonth: 100,
-              gpuHoursPerSimMonth: 10,
-              storageTbPerSimMonthByPortfolio: { minimal: 1 }
+              gpuHoursPerSimMonth: 10
             }
           }
+        },
+        storageTbPerSimMonthByResolution: {
+          tco79: { minimal: 0.1 },
+          tco399: { minimal: 1 }
         }
       }
     ],
@@ -66,7 +67,8 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
-        locked: false
+        locked: false,
+        completed: false
       },
       {
         id: 'sim-2',
@@ -78,6 +80,7 @@ function buildState(): AppState {
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
         locked: true,
+        completed: false,
         pinnedHpcId: 'hpc-a'
       },
       {
@@ -89,7 +92,8 @@ function buildState(): AppState {
         ensembles: 1,
         dataPortfolio: 'minimal',
         overheadMultiplier: 1,
-        locked: false
+        locked: false,
+        completed: false
       }
     ],
     assignments: [
@@ -113,7 +117,7 @@ describe('describeHpcDelete', () => {
     expect(impact.assignmentCount).toBe(1);
     expect(impact.lockedSimCount).toBe(1);
     // hpc-a appears under both tco79 and tco399, so 2 cost columns.
-    expect(impact.costColumnCount).toBe(2);
+    expect(impact.computeCostColumnCount).toBe(2);
   });
 
   it('returns zero counts for an HPC with no references', () => {
@@ -121,7 +125,7 @@ describe('describeHpcDelete', () => {
     expect(impact).toEqual({
       assignmentCount: 0,
       lockedSimCount: 0,
-      costColumnCount: 0
+      computeCostColumnCount: 0
     });
   });
 });
@@ -144,13 +148,17 @@ describe('cascadeDeleteHpc', () => {
     expect(sim2.pinnedHpcId).toBeUndefined();
   });
 
-  it('drops the HPC column from every model cost-matrix row', () => {
+  it('drops the HPC column from every model compute-cost row', () => {
     const next = cascadeDeleteHpc(buildState(), 'hpc-a');
     const model = next.models[0];
     expect('hpc-a' in model.costs.tco79).toBe(false);
     expect('hpc-b' in model.costs.tco79).toBe(true);
     // tco399 only had hpc-a — should now be an empty row, not deleted.
     expect(model.costs.tco399).toEqual({});
+    expect(model.storageTbPerSimMonthByResolution).toEqual({
+      tco79: { minimal: 0.1 },
+      tco399: { minimal: 1 }
+    });
   });
 
   it('does not mutate the input state', () => {

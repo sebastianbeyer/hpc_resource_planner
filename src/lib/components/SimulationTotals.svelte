@@ -54,7 +54,7 @@
             {#if cost.missingCost}
               <td
                 class="py-1 pr-2 text-amber-700"
-                title="No cost defined for this HPC"
+                title="No compute cost defined for this HPC"
                 data-testid="totals-cpu"
                 data-missing="true"
               >
@@ -62,19 +62,14 @@
               </td>
               <td
                 class="py-1 pr-2 text-amber-700"
-                title="No cost defined for this HPC"
+                title="No compute cost defined for this HPC"
                 data-testid="totals-gpu"
                 data-missing="true"
               >
                 —
               </td>
-              <td
-                class="py-1 pr-2 text-amber-700"
-                title="No cost defined for this HPC"
-                data-testid="totals-storage"
-                data-missing="true"
-              >
-                —
+              <td class="py-1 pr-2 font-mono text-slate-900" data-testid="totals-storage">
+                {floatFmt.format(cost.storageTb)}
               </td>
             {:else}
               <td class="py-1 pr-2 font-mono text-slate-900" data-testid="totals-cpu">

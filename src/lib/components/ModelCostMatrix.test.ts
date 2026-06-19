@@ -7,7 +7,8 @@ function sampleModel(): Model {
   return {
     id: 'm1',
     name: 'IFS',
-    costs: {}
+    costs: {},
+    storageTbPerSimMonthByResolution: {}
   };
 }
 
@@ -64,12 +65,11 @@ describe('ModelCostMatrix', () => {
     await fireEvent.input(storageInputs[0], { target: { value: '2.5' } });
 
     const next = onChange.mock.calls[0][0] as Model;
-    expect(
-      next.costs['tco79']['h1'].storageTbPerSimMonthByPortfolio['standard']
-    ).toBe(2.5);
+    expect(next.storageTbPerSimMonthByResolution['tco79']['standard']).toBe(2.5);
+    expect(next.costs['tco79']).toBeUndefined();
   });
 
-  it('renders an empty-state hint when there are no HPCs', () => {
+  it('still renders storage inputs when there are no HPCs', () => {
     const { getByTestId } = render(ModelCostMatrix, {
       props: {
         model: sampleModel(),
@@ -79,6 +79,7 @@ describe('ModelCostMatrix', () => {
         onChange: vi.fn()
       }
     });
-    expect(getByTestId('cost-matrix-empty')).toBeTruthy();
+    expect(getByTestId('model-cost-matrix')).toBeTruthy();
+    expect(getByTestId('storage-rates')).toBeTruthy();
   });
 });

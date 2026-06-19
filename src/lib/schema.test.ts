@@ -4,7 +4,7 @@ import type { AppState } from './types';
 
 function makeFullState(): AppState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 3,
     hpcs: [
       {
         id: 'hpc-1',
@@ -24,10 +24,12 @@ function makeFullState(): AppState {
           tco399: {
             'hpc-1': {
               cpuHoursPerSimMonth: 100,
-              gpuHoursPerSimMonth: 0,
-              storageTbPerSimMonthByPortfolio: { standard: 0.5, minimal: 0.1 }
+              gpuHoursPerSimMonth: 0
             }
           }
+        },
+        storageTbPerSimMonthByResolution: {
+          tco399: { standard: 0.5, minimal: 0.1 }
         }
       }
     ],
@@ -41,7 +43,8 @@ function makeFullState(): AppState {
         ensembles: 1,
         dataPortfolio: 'standard',
         overheadMultiplier: 1.15,
-        locked: false
+        locked: false,
+        completed: false
       },
       {
         id: 'sim-2',
@@ -53,6 +56,7 @@ function makeFullState(): AppState {
         dataPortfolio: 'minimal',
         overheadMultiplier: 1.0,
         locked: true,
+        completed: false,
         pinnedHpcId: 'hpc-1',
         packageLabel: 'phase-1',
         zeroCompute: false
@@ -218,6 +222,12 @@ describe('validateState', () => {
     expect(() => validateState(s)).toThrow(/pinnedHpcId.*required when simulation is locked/);
   });
 
+  it('rejects a simulation with non-boolean completed flag', () => {
+    const s = makeFullState();
+    (s.simulations[0] as unknown as Record<string, unknown>).completed = 'yes';
+    expect(() => validateState(s)).toThrow(/completed.*expected boolean/);
+  });
+
   it('rejects an assignment with fraction > 1', () => {
     const s = makeFullState();
     s.assignments[0].periodSplit['p-1'] = 1.5;
@@ -234,6 +244,14 @@ describe('validateState', () => {
     const s = makeFullState();
     s.models[0].costs.tco399['hpc-1'].cpuHoursPerSimMonth = -1;
     expect(() => validateState(s)).toThrow(/cpuHoursPerSimMonth.*non-negative/);
+  });
+
+  it('rejects a model storage rate with negative TB per sim-month', () => {
+    const s = makeFullState();
+    s.models[0].storageTbPerSimMonthByResolution.tco399.standard = -1;
+    expect(() => validateState(s)).toThrow(
+      /storageTbPerSimMonthByResolution\.tco399\.standard.*non-negative/
+    );
   });
 
   it('rejects a non-string in dataPortfolios array', () => {
@@ -258,7 +276,82 @@ describe('migrate', () => {
     const s: Record<string, unknown> = { ...defaultState() };
     delete s.schemaVersion;
     const out = migrate(s);
-    expect(out.schemaVersion).toBe(1);
+    expect(out.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('migrates v1 per-HPC storage rates and adds completed defaults', () => {
+    const v1 = {
+      schemaVersion: 1,
+      hpcs: [],
+      assignments: [],
+      dataPortfolios: ['minimal', 'standard'],
+      resolutions: ['tco399'],
+      models: [
+        {
+          id: 'model-1',
+          name: 'IFS',
+          costs: {
+            tco399: {
+              'hpc-1': {
+                cpuHoursPerSimMonth: 100,
+                gpuHoursPerSimMonth: 0,
+                storageTbPerSimMonthByPortfolio: {
+                  standard: 0.5,
+                  minimal: 0.1
+                }
+              },
+              'hpc-2': {
+                cpuHoursPerSimMonth: 120,
+                gpuHoursPerSimMonth: 0,
+                storageTbPerSimMonthByPortfolio: {
+                  standard: 0.75
+                }
+              }
+            }
+          }
+        }
+      ],
+      simulations: [
+        {
+          id: 'sim-1',
+          name: 'old sim',
+          modelId: 'model-1',
+          resolution: 'tco399',
+          lengthYears: 1,
+          ensembles: 1,
+          dataPortfolio: 'standard',
+          overheadMultiplier: 1,
+          locked: false
+        }
+      ]
+    };
+
+    const out = migrate(v1);
+    expect(out.schemaVersion).toBe(3);
+    expect(out.models[0].costs.tco399['hpc-1']).toEqual({
+      cpuHoursPerSimMonth: 100,
+      gpuHoursPerSimMonth: 0
+    });
+    expect(out.models[0].storageTbPerSimMonthByResolution).toEqual({
+      tco399: { standard: 0.5, minimal: 0.1 }
+    });
+    expect(out.simulations[0].completed).toBe(false);
+  });
+
+  it('migrates v2 simulations to v3 completed defaults', () => {
+    const v2 = {
+      ...makeFullState(),
+      schemaVersion: 2,
+      simulations: makeFullState().simulations.map((sim) => {
+        const { completed: _completed, ...rest } = sim;
+        void _completed;
+        return rest;
+      })
+    };
+
+    const out = migrate(v2);
+    expect(out.schemaVersion).toBe(3);
+    expect(out.simulations.every((sim) => sim.completed === false)).toBe(true);
   });
 
   it('throws on a newer-than-supported schemaVersion', () => {

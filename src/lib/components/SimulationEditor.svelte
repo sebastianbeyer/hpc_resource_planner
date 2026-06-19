@@ -10,6 +10,9 @@
   export let onChange: (next: Simulation) => void;
   export let onDelete: () => void;
 
+  let packageLabelDraft = sim.packageLabel ?? '';
+  let packageLabelFocused = false;
+
   function emit(patch: Partial<Simulation>) {
     onChange({ ...sim, ...patch });
   }
@@ -25,15 +28,26 @@
   // Pull the resolution dropdown options from the model's defined cost cells
   // when available; fall back to the shared vocabulary if the model has no
   // entries yet so the user can still make a reasonable selection.
-  $: modelResolutions = model ? Object.keys(model.costs) : [];
+  $: modelResolutions = model
+    ? [
+        ...new Set([
+          ...Object.keys(model.costs),
+          ...Object.keys(model.storageTbPerSimMonthByResolution)
+        ])
+      ]
+    : [];
   $: resolutionOptions =
     modelResolutions.length > 0 ? modelResolutions : resolutions;
 
   // Validation: locked sims require a pinned HPC.
   $: lockedWithoutPin = sim.locked && !sim.pinnedHpcId;
 
-  // Missing-cost warnings: list each HPC that has no cost cell defined for
-  // the current (modelId, resolution).
+  $: if (!packageLabelFocused && packageLabelDraft !== (sim.packageLabel ?? '')) {
+    packageLabelDraft = sim.packageLabel ?? '';
+  }
+
+  // Missing-cost warnings: list each HPC that has no compute cost cell defined
+  // for the current (modelId, resolution).
   $: missingCostHpcs = (() => {
     if (!model || !sim.resolution) return [] as string[];
     const missing: string[] = [];
@@ -69,8 +83,15 @@
     }
   }
 
-  function onPackageLabelChange(e: Event) {
-    const value = (e.currentTarget as HTMLInputElement).value;
+  function onCompletedChange(e: Event) {
+    emit({ completed: (e.currentTarget as HTMLInputElement).checked });
+  }
+
+  function commitPackageLabel() {
+    packageLabelFocused = false;
+    const value = packageLabelDraft;
+    if (value === (sim.packageLabel ?? '')) return;
+
     if (value === '') {
       const next = { ...sim };
       delete next.packageLabel;
@@ -78,6 +99,12 @@
     } else {
       emit({ packageLabel: value });
     }
+  }
+
+  function onPackageLabelKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    (e.currentTarget as HTMLInputElement).blur();
   }
 </script>
 
@@ -193,8 +220,11 @@
       <input
         type="text"
         class="mt-1 w-40 rounded border border-slate-300 px-2 py-1 text-sm text-slate-900"
-        value={sim.packageLabel ?? ''}
-        on:input={onPackageLabelChange}
+        value={packageLabelDraft}
+        on:focus={() => (packageLabelFocused = true)}
+        on:input={(e) => (packageLabelDraft = e.currentTarget.value)}
+        on:blur={commitPackageLabel}
+        on:keydown={onPackageLabelKeydown}
         placeholder="(optional)"
         data-testid="sim-package"
       />
@@ -249,6 +279,16 @@
       />
       Zero compute (historical / already-done data)
     </label>
+
+    <label class="flex items-center gap-2 text-xs font-medium text-slate-700">
+      <input
+        type="checkbox"
+        checked={sim.completed}
+        on:change={onCompletedChange}
+        data-testid="sim-completed"
+      />
+      Completed
+    </label>
   </div>
 
   {#if lockedWithoutPin}
@@ -259,7 +299,7 @@
 
   {#if missingCostHpcs.length > 0 && sim.resolution}
     <p class="mt-2 text-xs text-red-600" data-testid="warn-missing-cost">
-      No cost defined for {sim.resolution} resolution on
+      No compute cost defined for {sim.resolution} resolution on
       {missingCostHpcs.join(', ')}.
     </p>
   {/if}

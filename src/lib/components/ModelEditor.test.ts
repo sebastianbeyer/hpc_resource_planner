@@ -7,7 +7,8 @@ function sampleModel(): Model {
   return {
     id: 'm1',
     name: 'IFS',
-    costs: {}
+    costs: {},
+    storageTbPerSimMonthByResolution: {}
   };
 }
 

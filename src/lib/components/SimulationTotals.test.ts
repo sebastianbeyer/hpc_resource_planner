@@ -15,10 +15,12 @@ describe('SimulationTotals', () => {
         tco79: {
           h1: {
             cpuHoursPerSimMonth: 100,
-            gpuHoursPerSimMonth: 10,
-            storageTbPerSimMonthByPortfolio: { standard: 0.5 }
+            gpuHoursPerSimMonth: 10
           }
         }
+      },
+      storageTbPerSimMonthByResolution: {
+        tco79: { standard: 0.5 }
       }
     };
     const sim: Simulation = {
@@ -30,7 +32,8 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: 'standard',
       overheadMultiplier: 1.15,
-      locked: false
+      locked: false,
+      completed: false
     };
 
     const { getByTestId } = render(SimulationTotals, {
@@ -50,7 +53,12 @@ describe('SimulationTotals', () => {
     const hpcs: Hpc[] = [
       { id: 'h1', name: 'Levante', storageBudgetTb: 500, periods: [] }
     ];
-    const model: Model = { id: 'm1', name: 'IFS', costs: {} };
+    const model: Model = {
+      id: 'm1',
+      name: 'IFS',
+      costs: {},
+      storageTbPerSimMonthByResolution: { tco79: { standard: 0.5 } }
+    };
     const sim: Simulation = {
       id: 's1',
       name: 'test',
@@ -60,7 +68,8 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: 'standard',
       overheadMultiplier: 1.15,
-      locked: false
+      locked: false,
+      completed: false
     };
 
     const { getByTestId } = render(SimulationTotals, {
@@ -70,6 +79,7 @@ describe('SimulationTotals', () => {
     const cpu = getByTestId('totals-cpu');
     expect(cpu.getAttribute('data-missing')).toBe('true');
     expect(cpu.textContent?.trim()).toBe('—');
+    expect(getByTestId('totals-storage').textContent?.trim()).toBe('6');
   });
 
   it('shows a helpful empty state when no model is matched', () => {
@@ -85,7 +95,8 @@ describe('SimulationTotals', () => {
       ensembles: 1,
       dataPortfolio: '',
       overheadMultiplier: 1.15,
-      locked: false
+      locked: false,
+      completed: false
     };
 
     const { container } = render(SimulationTotals, {
