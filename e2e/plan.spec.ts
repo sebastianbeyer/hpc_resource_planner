@@ -51,7 +51,8 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   await expect(cell).toBeVisible();
   await cell.getByTestId('cell-cpu').fill('10');
   await cell.getByTestId('cell-gpu').fill('1');
-  await cell
+  await modelCard
+    .locator('[data-testid="storage-rates"][data-resolution="tco79"]')
     .locator('[data-testid="cell-storage"][data-portfolio="standard"]')
     .fill('0.5');
 
@@ -77,6 +78,7 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   await simCard.getByTestId('sim-ensembles').fill('1');
   await simCard.getByTestId('sim-portfolio').selectOption('standard');
   await simCard.getByTestId('sim-overhead').fill('1');
+  await simCard.getByTestId('sim-completed').check();
 
   await page.locator('body').click();
   await page.waitForTimeout(500);
@@ -106,17 +108,35 @@ test('assign sim → meter updates; bust the budget → red over-budget styling'
   const lane = page.getByTestId('hpc-lane').first();
   await expect(lane).toBeVisible();
   await expect(lane.getByTestId('simulation-card')).toHaveCount(1);
+  const assignedCard = lane.getByTestId('simulation-card').first();
+
+  await expect(assignedCard.getByTestId('card-compute-share')).toContainText(
+    'CPU 12% / GPU 12%'
+  );
+  await expect(assignedCard.getByTestId('card-storage-share')).toContainText(
+    'Storage 60%'
+  );
+  await assignedCard.getByTestId('card-actions').click();
+  await expect(assignedCard.getByTestId('card-actions-menu')).toBeVisible();
+  await expect(assignedCard.getByTestId('edit-split')).toBeVisible();
+  await expect(assignedCard.getByTestId('unassign')).toBeVisible();
 
   // First budget-meter in the lane is "CPU" for the (only) period.
   // Sim cost: 1 sim × 12 months × 10 cpuPerMonth × 1 overhead = 120 CPU h
   const cpuMeter = lane.getByTestId('budget-meter').first();
   await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('120');
   await expect(cpuMeter.getByTestId('meter-numeric')).toContainText('1,000');
+  await expect(cpuMeter.getByTestId('completed-used')).toContainText(
+    '120 CPU h completed'
+  );
   await expect(cpuMeter).toHaveAttribute('data-over-budget', 'false');
 
   // Storage meter: 0.5 × 12 = 6 TB / 10 TB → not over budget
   const storageWrapper = lane.getByTestId('storage-meter-wrapper');
   await expect(storageWrapper.getByTestId('meter-numeric')).toContainText('6');
+  await expect(storageWrapper.getByTestId('completed-used')).toContainText(
+    '6 TB completed'
+  );
   await expect(storageWrapper.getByTestId('budget-meter')).toHaveAttribute(
     'data-over-budget',
     'false'

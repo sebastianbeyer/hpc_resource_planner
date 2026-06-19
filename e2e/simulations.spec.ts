@@ -11,7 +11,9 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   // ---- step 1: set up an HPC with one period ----
   await page.goto('/hpcs');
   await page.waitForFunction(() => {
-    const btn = document.querySelector('[data-testid="add-hpc"]') as HTMLButtonElement | null;
+    const btn = document.querySelector(
+      '[data-testid="add-hpc"]',
+    ) as HTMLButtonElement | null;
     return btn !== null && btn.offsetParent !== null;
   });
   await page.waitForLoadState('networkidle');
@@ -34,7 +36,9 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   // ---- step 2: add a model "IFS" and a cost cell tco79 × Levante ----
   await page.goto('/models');
   await page.waitForFunction(() => {
-    const btn = document.querySelector('[data-testid="add-model"]') as HTMLButtonElement | null;
+    const btn = document.querySelector(
+      '[data-testid="add-model"]',
+    ) as HTMLButtonElement | null;
     return btn !== null && btn.offsetParent !== null;
   });
   await page.waitForLoadState('networkidle');
@@ -50,7 +54,8 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   await expect(cell).toBeVisible();
   await cell.getByTestId('cell-cpu').fill('100');
   await cell.getByTestId('cell-gpu').fill('10');
-  await cell
+  await modelCard
+    .locator('[data-testid="storage-rates"][data-resolution="tco79"]')
     .locator('[data-testid="cell-storage"][data-portfolio="standard"]')
     .fill('0.5');
 
@@ -60,7 +65,9 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   // ---- step 3: go to /simulations and add a sim ----
   await page.goto('/simulations');
   await page.waitForFunction(() => {
-    const btn = document.querySelector('[data-testid="add-simulation"]') as HTMLButtonElement | null;
+    const btn = document.querySelector(
+      '[data-testid="add-simulation"]',
+    ) as HTMLButtonElement | null;
     return btn !== null && btn.offsetParent !== null;
   });
   await page.waitForLoadState('networkidle');
@@ -77,6 +84,17 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   await simCard.getByTestId('sim-portfolio').selectOption('standard');
   await simCard.getByTestId('sim-overhead').fill('1.15');
 
+  const packageInput = simCard.getByTestId('sim-package');
+  await packageInput.click();
+  await packageInput.pressSequentially('phase1');
+  await expect(packageInput).toBeFocused();
+  await packageInput.press('Backspace');
+  await expect(packageInput).toBeFocused();
+  await packageInput.blur();
+  await expect(
+    page.locator('[data-testid="sim-group"][data-group-label="phase"]'),
+  ).toBeVisible();
+
   // ---- step 4: assert the SimulationTotals row shows the expected math ----
   const totalsRow = page.getByTestId('totals-row').first();
   await expect(totalsRow).toBeVisible();
@@ -87,4 +105,22 @@ test('create HPC + model + sim, see computed totals', async ({ page }) => {
   await expect(totalsRow.getByTestId('totals-gpu')).toHaveText('276');
   // Storage: 0.5 × 24 = 12 (no overhead)
   await expect(totalsRow.getByTestId('totals-storage')).toHaveText('12');
+
+  // ---- step 5: duplicate and fold simulations in the overview ----
+  const firstShell = page.getByTestId('sim-shell').first();
+  await expect(firstShell.getByTestId('sim-summary')).toContainText('IFS');
+  await expect(firstShell.getByTestId('sim-summary')).toContainText('tco79');
+
+  await firstShell.getByTestId('duplicate-sim').click();
+  await expect(page.getByTestId('sim-shell')).toHaveCount(2);
+
+  const copiedShell = page.getByTestId('sim-shell').nth(1);
+  await expect(copiedShell.getByTestId('sim-name')).toHaveValue('test copy');
+  await expect(copiedShell.getByTestId('sim-summary')).toContainText('IFS');
+
+  await firstShell.getByTestId('toggle-sim').click();
+  await expect(firstShell).toHaveAttribute('data-expanded', 'false');
+  await expect(firstShell.getByTestId('simulation-editor')).toHaveCount(0);
+  await expect(firstShell.getByTestId('sim-summary')).toContainText('standard');
+  await expect(page.getByTestId('simulation-editor')).toHaveCount(1);
 });
