@@ -6,10 +6,6 @@
   export let periods: Period[];
   export let onChange: (split: Record<string, number>) => void;
 
-  /** Local working copy so the user can type intermediate values without
-   *  triggering renormalisation on every keystroke. We push to onChange on
-   *  every edit (so the rest of the app sees the in-progress value), and
-   *  apply the normalisation only when the user blurs the field. */
   let split: Record<string, number> = { ...assignment.periodSplit };
   let spreadN = Math.max(1, Math.min(periods.length, 1));
 
@@ -39,19 +35,6 @@
     const n = Number(raw);
     split = { ...split, [periodId]: Number.isFinite(n) ? n : 0 };
     onChange(split);
-  }
-
-  function handleBlur() {
-    // On blur, apply the normalised version if the user's input wasn't valid.
-    if (!validity.valid) {
-      const { split: norm } = normaliseSplit(split);
-      split = norm;
-      inputStrings = {};
-      for (const p of periods) {
-        inputStrings[p.id] = (split[p.id] ?? 0).toString();
-      }
-      onChange(split);
-    }
   }
 
   function applySpread() {
@@ -91,7 +74,6 @@
             class="w-24 rounded border border-slate-300 px-2 py-1 font-mono text-slate-900"
             value={inputStrings[p.id] ?? '0'}
             on:input={(e) => handleInput(p.id, e.currentTarget.value)}
-            on:blur={handleBlur}
             data-testid="split-input"
             data-period-id={p.id}
           />
